@@ -1,0 +1,10 @@
+# Betriebssystem / Editor
+.DS_Store
+*.log
+
+# Interne Tooling-Dateien
+.claude/
+/private/
+
+# Private Grundriss-Scans (nicht veröffentlichen)
+Grundriss*.jpg
