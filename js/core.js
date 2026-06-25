@@ -95,6 +95,15 @@ GD.openingDefs = {
   "door-slide":    { cat: "door", name: "Schiebetür", hinge: true },
   "door-fold":     { cat: "door", name: "Falttür", hinge: true },
 };
+// Nur Bild-Quellen zulassen: base64-Bild-DataURLs oder relative Bildpfade.
+// Verwirft javascript:, externe/absolute URLs, non-base64 data:-URLs usw.
+GD.sanitizeImageSrc = function (src) {
+  if (typeof src !== "string" || !src) return "";
+  if (/^data:image\/[a-z.+-]+;base64,/i.test(src)) return src;
+  if (src.indexOf(":") === -1 && /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(src)) return src;
+  return "";
+};
+
 GD.isWindow = (t) => typeof t === "string" && t.indexOf("window") === 0;
 GD.openingCat = (t) => (GD.openingDefs[t] || {}).cat || (GD.isWindow(t) ? "window" : "door");
 GD.openingTypesByCat = (cat) => Object.keys(GD.openingDefs).filter(k => GD.openingDefs[k].cat === cat);

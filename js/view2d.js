@@ -69,16 +69,18 @@ GD.view2d = (function () {
 
   function drawUnderlay(floor) {
     const u = floor.underlay;
-    if (!u || !u.visible || !u.src) return;
+    if (!u || !u.visible) return;
+    const src = GD.sanitizeImageSrc(u.src);
+    if (!src) return;
     const [sx, sy] = W2S(u.x, u.y);
     const img = el("image", { x: sx, y: sy, opacity: u.opacity, preserveAspectRatio: "none" }, svg);
-    img.setAttributeNS("http://www.w3.org/1999/xlink", "href", u.src);
-    img.setAttribute("href", u.src);
+    img.setAttributeNS("http://www.w3.org/1999/xlink", "href", src);
+    img.setAttribute("href", src);
     if (u.rotation) img.setAttribute("transform", `rotate(${u.rotation} ${sx} ${sy})`);
     if (!u._nw) {
       const probe = new Image();
       probe.onload = () => { u._nw = probe.naturalWidth; u._nh = probe.naturalHeight; render(); };
-      probe.src = u.src;
+      probe.src = src;
       img.setAttribute("width", 1000 * u.scale * view.scale); img.setAttribute("height", 700 * u.scale * view.scale);
     } else { img.setAttribute("width", u._nw * u.scale * view.scale); img.setAttribute("height", u._nh * u.scale * view.scale); }
   }

@@ -87,7 +87,7 @@ GD.io = (function () {
   /* ---------- JSON ---------- */
   function exportJSON() { download((GD.state.project.name || "grundriss") + ".json", JSON.stringify(GD.state.project, null, 2), "application/json"); }
   function importJSON(text) {
-    try { const p = JSON.parse(text); if (!p.floors || !p.floors.length) throw 0; GD.state.replaceProject(p); GD.view2d.fit(); GD.ui.refreshAll(); GD.ui.toast("Projekt geladen"); }
+    try { const p = JSON.parse(text); if (!p.floors || !p.floors.length) throw 0; p.floors.forEach(f => { if (f && f.underlay) f.underlay.src = GD.sanitizeImageSrc(f.underlay.src); }); GD.state.replaceProject(p); GD.view2d.fit(); GD.ui.refreshAll(); GD.ui.toast("Projekt geladen"); }
     catch (e) { alert("Ungültige Projektdatei."); }
   }
 
@@ -167,8 +167,10 @@ GD.io = (function () {
   }
 
   function importImage(dataURL) {
+    const src = GD.sanitizeImageSrc(dataURL);
+    if (!src) { alert("Nicht unterstütztes Bildformat."); return; }
     const fl = GD.state.activeFloor();
-    GD.state.commit(() => { fl.underlay = { src: dataURL, x: 0, y: 0, scale: 1, rotation: 0, opacity: 0.5, visible: true }; });
+    GD.state.commit(() => { fl.underlay = { src, x: 0, y: 0, scale: 1, rotation: 0, opacity: 0.5, visible: true }; });
     GD.view2d.render(); GD.ui.refreshAll();
   }
 
