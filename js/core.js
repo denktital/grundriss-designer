@@ -207,3 +207,21 @@ GD.state = (function () {
     replaceProject(p) { undoStack = []; redoStack = []; project = p; if (!project.activeFloorId) project.activeFloorId = project.floors[0].id; save(); emit("change"); emit("structure"); },
   };
 })();
+
+/* ---------------- Vorlagen-/Projektspeicher (mehrere benannte Pläne im Browser) ---------------- */
+GD.store = (function () {
+  const KEY = "grundriss-templates-v1";
+  function all() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
+  function persist(arr) { try { localStorage.setItem(KEY, JSON.stringify(arr)); return true; } catch (e) { return false; } }
+  return {
+    list() { return all().map(t => ({ id: t.id, name: t.name, savedAt: t.savedAt, floors: (t.project.floors || []).length })); },
+    save(name, project) {
+      const arr = all(); const id = GD.uid("tpl");
+      arr.push({ id, name: name || "Vorlage", savedAt: Date.now(), project: JSON.parse(JSON.stringify(project)) });
+      return persist(arr) ? id : null;
+    },
+    load(id) { const t = all().find(x => x.id === id); return t ? JSON.parse(JSON.stringify(t.project)) : null; },
+    remove(id) { persist(all().filter(x => x.id !== id)); },
+    rename(id, name) { const arr = all(); const t = arr.find(x => x.id === id); if (t) { t.name = name; persist(arr); } },
+  };
+})();

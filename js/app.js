@@ -280,7 +280,13 @@ GD.ui = (function () {
       { label: "OBJ importieren (3D → Grundriss)…", act: () => GD.io.pickFile(".obj", (d) => GD.io.importOBJ(d)) },
       { label: "Bild als Vorlage…", act: () => GD.io.importImageDialog() },
       "-",
-      { label: "Projekt speichern (JSON)", act: () => GD.io.exportJSON() },
+      { label: "Projekt als Datei speichern (JSON)", act: () => GD.io.exportJSON() },
+    ]));
+    bar.appendChild(menu("Vorlagen", [
+      { label: "Aktuellen Plan als Vorlage speichern…", act: saveCurrentAsTemplate },
+      { label: "Vorlagen verwalten & laden…", act: openTemplateManager },
+      "-",
+      { label: "Standard-Vorlage laden (EG/OG)", act: newProject },
     ]));
     bar.appendChild(menu("Export", [
       { label: "PNG-Bild", act: () => GD.io.exportPNG(false) },
@@ -309,6 +315,52 @@ GD.ui = (function () {
     document.addEventListener("click", closeMenus);
   }
   function newProject() { if (!confirm("Neues Projekt aus Vorlage? Aktuelles wird ersetzt.")) return; GD.state.replaceProject(GD.templates.buildDefaultProject()); GD.view2d.fit(); refreshAll(); }
+
+  /* ---------- Vorlagen-/Projektverwaltung ---------- */
+  function saveCurrentAsTemplate() {
+    closeMenus();
+    const name = prompt("Name der Vorlage:", GD.state.project.name || "Mein Plan");
+    if (!name) return;
+    const id = GD.store.save(name, GD.state.project);
+    toast(id ? "Als Vorlage gespeichert" : "Speicher voll – nicht gespeichert");
+  }
+  function openTemplateManager() {
+    closeMenus();
+    let modal = $("#tplModal");
+    if (!modal) { modal = h("div", { id: "tplModal", class: "modal-overlay" }); document.body.appendChild(modal); modal.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none"; }); }
+    renderTemplateManager(modal);
+    modal.style.display = "flex";
+  }
+  function renderTemplateManager(modal) {
+    const close = () => modal.style.display = "none";
+    const list = GD.store.list().sort((a, b) => b.savedAt - a.savedAt);
+    modal.innerHTML = "";
+    const card = h("div", { class: "modal-card" });
+    card.appendChild(h("div", { class: "modal-head" }, [h("strong", {}, ["Vorlagen / gespeicherte Pläne"]), h("button", { class: "modal-x", onclick: close }, ["✕"])]));
+    const body = h("div", { class: "modal-body" });
+    if (!list.length) body.appendChild(h("p", { class: "muted small" }, ["Noch nichts gespeichert. Mit „+ Aktuellen Plan speichern“ sicherst du den aktuellen Plan hier im Browser."]));
+    list.forEach(t => {
+      const d = new Date(t.savedAt);
+      const row = h("div", { class: "tpl-row" }, [
+        h("div", { class: "tpl-info" }, [
+          h("div", { class: "tpl-name" }, [t.name]),
+          h("div", { class: "tpl-meta muted small" }, [`${t.floors} Geschoss(e) · ${d.toLocaleDateString()} ${("0" + d.getHours()).slice(-2)}:${("0" + d.getMinutes()).slice(-2)}`]),
+        ]),
+        h("div", { class: "tpl-actions" }, [
+          h("button", { class: "btn", title: "Laden", onclick: () => { if (confirm("Diesen Plan laden? Der aktuelle Plan wird ersetzt.")) { const p = GD.store.load(t.id); if (p) { GD.state.replaceProject(p); GD.view2d.fit(); refreshAll(); close(); toast("Geladen: " + t.name); } } } }, ["Laden"]),
+          h("button", { class: "btn", title: "Umbenennen", onclick: () => { const n = prompt("Umbenennen:", t.name); if (n) { GD.store.rename(t.id, n); renderTemplateManager(modal); } } }, ["✎"]),
+          h("button", { class: "btn danger", title: "Löschen", onclick: () => { if (confirm("Vorlage „" + t.name + "“ löschen?")) { GD.store.remove(t.id); renderTemplateManager(modal); } } }, ["🗑"]),
+        ]),
+      ]);
+      body.appendChild(row);
+    });
+    card.appendChild(body);
+    card.appendChild(h("div", { class: "modal-foot" }, [
+      h("button", { class: "btn", onclick: () => { const name = prompt("Name der Vorlage:", GD.state.project.name || "Mein Plan"); if (name) { GD.store.save(name, GD.state.project); renderTemplateManager(modal); toast("Gespeichert"); } } }, ["+ Aktuellen Plan speichern"]),
+      h("button", { class: "btn", onclick: close }, ["Schließen"]),
+    ]));
+    modal.appendChild(card);
+  }
 
   /* ---------- 2D/3D ---------- */
   let mode3d = false;
