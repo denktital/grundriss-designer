@@ -85,10 +85,15 @@ GD.view3d = (function () {
         const mid = (s + e) / 2; const c = GD.geom.add(w.a, GD.geom.mul(u, mid));
         addBox(M(e - s), hgt, t, M(c.x), yBase + yc, M(c.y), ang, MAT.wall());
       };
-      for (const [s, e] of segs) place(s, e, Hw, Hw / 2);
+      const extA = GD.wallCornerExt(floor, w, w.a), extB = GD.wallCornerExt(floor, w, w.b);
+      for (let [s, e] of segs) {
+        if (s < 0.01) s = -extA;
+        if (Math.abs(e - len) < 0.01) e = len + extB;
+        place(s, e, Hw, Hw / 2);
+      }
       for (const op of ops) {
         const o = op.o;
-        if (o.type === "window") {
+        if (GD.isWindow(o.type)) {
           const sill = M(o.sill != null ? o.sill : 90), winH = M(o.height != null ? o.height : 120), head = sill + winH;
           place(op.s, op.e, sill, sill / 2);
           if (head < Hw) place(op.s, op.e, Hw - head, head + (Hw - head) / 2);

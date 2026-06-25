@@ -162,25 +162,30 @@ GD.ui = (function () {
       box.appendChild(field("Höhe (cm, leer = Geschoss)", wh));
       box.appendChild(h("p", { class: "ro" }, ["Länge: " + m(GD.geom.dist(o.a, o.b)) + " m"]));
     } else if (s.kind === "opening") {
-      box.appendChild(h("h3", {}, ["Tür / Fenster"]));
-      const sel2 = h("select"); [["window", "Fenster"], ["door-single", "Drehtür"], ["door-double", "Doppeltür"], ["door-slide", "Schiebetür"]].forEach(([v, n]) => { const op = h("option", { value: v }, [n]); if (o.type === v) op.selected = true; sel2.appendChild(op); });
-      sel2.addEventListener("change", () => {
-        GD.state.commit(() => {
-          o.type = sel2.value;
-          if (o.type === "window") { o.sill = o.sill || 90; if (!o.height || o.height > 260) o.height = 120; }
-          else { o.sill = 0; if (!o.height || o.height < 140) o.height = 200; }
-        });
-        GD.view2d.render(); buildProps();
-      });
+      const isWin = GD.isWindow(o.type), odef = GD.openingDefs[o.type] || {};
+      box.appendChild(h("h3", {}, [isWin ? "Fenster" : "Tür"]));
+      const sel2 = h("select");
+      GD.openingTypesByCat(GD.openingCat(o.type)).forEach(k => { const op = h("option", { value: k }, [GD.openingDefs[k].name]); if (o.type === k) op.selected = true; sel2.appendChild(op); });
+      sel2.addEventListener("change", () => { GD.state.commit(() => GD.setOpeningType(o, sel2.value)); GD.view2d.render(); buildProps(); });
       box.appendChild(field("Typ", sel2));
       box.appendChild(field("Breite (m)", num(m(o.width), v => commit(() => o.width = v * 100))));
-      if (o.type === "window") {
-        box.appendChild(field("Brüstungshöhe (m)", num(m(o.sill != null ? o.sill : 90), v => commit(() => o.sill = Math.max(0, v * 100)))));
+      if (isWin) {
+        if (!odef.noSill) box.appendChild(field("Brüstungshöhe (m)", num(m(o.sill != null ? o.sill : 90), v => commit(() => o.sill = Math.max(0, v * 100)))));
         box.appendChild(field("Fensterhöhe (m)", num(m(o.height != null ? o.height : 120), v => commit(() => o.height = Math.max(10, v * 100)))));
       } else {
         box.appendChild(field("Türhöhe (m)", num(m(o.height != null ? o.height : 200), v => commit(() => o.height = Math.max(10, v * 100)))));
       }
-      box.appendChild(h("button", { class: "btn block", onclick: () => GD.editor.flipOpening() }, ["Anschlag spiegeln"]));
+      if (odef.hinge) {
+        const sh = h("select"), slide = o.type === "door-slide";
+        [["left", slide ? "schiebt nach links" : "links"], ["right", slide ? "schiebt nach rechts" : "rechts"]].forEach(([v, n]) => { const op = h("option", { value: v }, [n]); if ((o.hinge || "left") === v) op.selected = true; sh.appendChild(op); });
+        sh.addEventListener("change", () => commit(() => o.hinge = sh.value));
+        box.appendChild(field(slide ? "Schieberichtung" : "Anschlagseite", sh));
+      }
+      if (odef.dir) {
+        const sd = h("select"); [["in", "nach innen"], ["out", "nach außen"]].forEach(([v, n]) => { const op = h("option", { value: v }, [n]); if ((o.dir || "in") === v) op.selected = true; sd.appendChild(op); });
+        sd.addEventListener("change", () => commit(() => o.dir = sd.value));
+        box.appendChild(field("Öffnungsrichtung", sd));
+      }
     } else if (s.kind === "item") {
       box.appendChild(h("h3", {}, [GD.library.def(o.type).name]));
       box.appendChild(field("Breite (m)", num(m(o.w), v => commit(() => o.w = v * 100))));
@@ -297,7 +302,8 @@ GD.ui = (function () {
     bar.appendChild(menu("Ansicht", [
       { label: "Einpassen", act: () => GD.view2d.fit() },
       { label: "Raster ein/aus", act: () => { GD.state.project.settings.showGrid = !GD.state.project.settings.showGrid; GD.state.save(); GD.view2d.render(); } },
-      { label: "Maße ein/aus", act: () => { GD.state.project.settings.showDims = !GD.state.project.settings.showDims; GD.state.save(); GD.view2d.render(); } },
+      { label: "Bemaßung (innen + außen) ein/aus", act: () => { const s = GD.state.project.settings; s.showDims = !s.showDims; GD.state.save(); GD.view2d.render(); toast("Bemaßung: " + (s.showDims ? "an" : "aus")); } },
+      { label: "Nachbargeschoss einblenden", act: () => { const s = GD.state.project.settings; s.showGhost = !s.showGhost; GD.state.save(); GD.view2d.render(); toast("Nachbargeschoss: " + (s.showGhost ? "an" : "aus")); } },
       { label: "Ortho-Fang ein/aus", act: () => { GD.state.project.settings.ortho = !GD.state.project.settings.ortho; GD.state.save(); toast("Ortho: " + (GD.state.project.settings.ortho ? "an" : "aus")); } },
     ]));
     document.addEventListener("click", closeMenus);
@@ -401,6 +407,7 @@ GD.ui = (function () {
 
     GD.state.on("change", () => { GD.state.save && 0; updateStatus(); });
     GD.state.on("structure", () => { buildFloors(); });
+    GD.state.on("rerender", () => { GD.view2d.render(); buildFloors(); renderSide(); updateStatus(); if (mode3d) GD.view3d.build(); });
     GD.state.on("selection", () => { if (sideTab === "props") buildProps(); updateStatus(); });
     GD.state.on("tool", () => { syncTool(); });
     GD.state.on("zoom", updateStatus);

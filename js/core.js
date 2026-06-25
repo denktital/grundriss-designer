@@ -72,6 +72,47 @@ GD.geom = {
 let _id = 1;
 GD.uid = (p) => (p || "id") + "_" + (_id++) + Date.now().toString(36).slice(-3);
 
+/* Eckverlängerung: trifft am Punkt pt eine andere Wand, wird diese Wand um die halbe
+   Dicke der dicksten dort anschließenden Wand verlängert, damit die Ecke bündig schließt. */
+GD.wallCornerExt = function (floor, wall, pt) {
+  let maxT = 0;
+  for (const o of floor.walls) {
+    if (o.id === wall.id) continue;
+    if (GD.geom.dist(o.a, pt) < 1.5 || GD.geom.dist(o.b, pt) < 1.5) maxT = Math.max(maxT, o.thickness);
+  }
+  return maxT > 0 ? maxT / 2 : 0;
+};
+
+/* Tür-/Fenstertypen mit ihren relevanten Eigenschaften.
+   hinge = Anschlagseite (links/rechts), dir = Öffnungsrichtung (innen/außen). */
+GD.openingDefs = {
+  "window":        { cat: "window", name: "Einfachfenster", hinge: true },
+  "window-double": { cat: "window", name: "Doppelflügel", hinge: true },
+  "window-fixed":  { cat: "window", name: "Festverglasung" },
+  "window-floor":  { cat: "window", name: "Französisch (bodentief)", noSill: true, hinge: true },
+  "door-single":   { cat: "door", name: "Drehtür", hinge: true, dir: true },
+  "door-double":   { cat: "door", name: "Doppeltür", dir: true },
+  "door-slide":    { cat: "door", name: "Schiebetür", hinge: true },
+  "door-fold":     { cat: "door", name: "Falttür", hinge: true },
+};
+GD.isWindow = (t) => typeof t === "string" && t.indexOf("window") === 0;
+GD.openingCat = (t) => (GD.openingDefs[t] || {}).cat || (GD.isWindow(t) ? "window" : "door");
+GD.openingTypesByCat = (cat) => Object.keys(GD.openingDefs).filter(k => GD.openingDefs[k].cat === cat);
+// Typ wechseln und die für den Typ sinnvollen Parameter setzen
+GD.setOpeningType = function (o, type) {
+  o.type = type;
+  const def = GD.openingDefs[type] || {};
+  if (GD.isWindow(type)) {
+    o.sill = def.noSill ? 0 : (o.sill > 0 ? o.sill : 90);
+    if (!o.height || o.height > 260) o.height = 120;
+  } else {
+    o.sill = 0;
+    if (!o.height || o.height < 140) o.height = 200;
+    if (o.hinge == null) o.hinge = "left";
+    if (o.dir == null) o.dir = "in";
+  }
+};
+
 /* ---------------- Modell-Factories ---------------- */
 GD.make = {
   project() {
@@ -79,7 +120,7 @@ GD.make = {
       name: "Mein Grundriss",
       floors: [],
       activeFloorId: null,
-      settings: { gridCm: 25, snapCm: 15, theme: "dark", accent: "#4f8cff", showGrid: true, showDims: true, ortho: true },
+      settings: { gridCm: 25, snapCm: 15, theme: "dark", accent: "#4f8cff", showGrid: true, showDims: true, ortho: true, showGhost: false },
     };
   },
   floor(name) {
@@ -93,8 +134,15 @@ GD.make = {
   wall(a, b, thickness) { return { id: GD.uid("wall"), a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, thickness: thickness || 18, height: null }; },
   room(poly, name) { return { id: GD.uid("room"), name: name || "Raum", poly: poly.map(p => ({ x: p.x, y: p.y })), color: "#ffffff", ceiling: 260 }; },
   opening(wallId, pos, width, type) {
-    const win = type === "window";
-    return { id: GD.uid("op"), wallId, pos, width: width || 90, type: type || "door-single", swing: "left", flip: false, sill: win ? 90 : 0, height: win ? 120 : 200 };
+    type = type || "door-single";
+    const win = GD.isWindow(type);
+    return {
+      id: GD.uid("op"), wallId, pos, type,
+      width: width || (win ? 100 : 90),
+      hinge: "left", dir: "in",
+      sill: win ? (type === "window-floor" ? 0 : 90) : 0,
+      height: win ? 120 : 200,
+    };
   },
   item(type, x, y) { const d = GD.library.def(type); return { id: GD.uid("item"), type, x, y, rot: 0, w: d.w, h: d.h, hh: d.z != null ? d.z : 50, label: "" }; },
   dim(a, b) { return { id: GD.uid("dim"), a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, offset: 40 }; },
@@ -121,8 +169,8 @@ GD.state = (function () {
     if (undoStack.length > MAX_UNDO) undoStack.shift();
     redoStack = [];
   }
-  function undo() { if (!undoStack.length) return; redoStack.push(clone(project)); project = undoStack.pop(); save(); emit("change"); emit("structure"); }
-  function redo() { if (!redoStack.length) return; undoStack.push(clone(project)); project = redoStack.pop(); save(); emit("change"); emit("structure"); }
+  function undo() { if (!undoStack.length) return; redoStack.push(clone(project)); project = undoStack.pop(); save(); emit("change"); emit("structure"); emit("rerender"); }
+  function redo() { if (!redoStack.length) return; undoStack.push(clone(project)); project = redoStack.pop(); save(); emit("change"); emit("structure"); emit("rerender"); }
   function canUndo() { return undoStack.length > 0; }
   function canRedo() { return redoStack.length > 0; }
 

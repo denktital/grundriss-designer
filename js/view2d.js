@@ -40,14 +40,17 @@ GD.view2d = (function () {
     const st = GD.state.project.settings;
 
     if (st.showGrid) drawGrid(Wd, Ht);
+    if (st.showGhost) drawGhost(floor);
     drawUnderlay(floor);
     floor.rooms.forEach(r => drawRoomFill(r));
     floor.walls.forEach(w => drawWall(floor, w));
     floor.openings.forEach(o => drawOpening(floor, o));
     floor.furniture.forEach(it => drawItem(it));
-    if (st.showDims) floor.dims.forEach(d => drawDim(d));
+    if (st.showDims) { drawAutoDims(floor); floor.dims.forEach(d => drawDim(d)); }
     floor.labels.forEach(l => drawLabel(l));
     floor.rooms.forEach(r => drawRoomBadge(r));
+    drawRoofHint(floor);
+    if (st.showGhost) drawOriginMarker();
 
     drawSelection(floor);
     if (ed().preview) ed().preview(el, W2S, svg);
@@ -100,8 +103,11 @@ GD.view2d = (function () {
     const segs = []; let cur = 0;
     for (const op of ops) { if (op.s > cur) segs.push([cur, op.s]); cur = Math.max(cur, op.e); }
     if (cur < len) segs.push([cur, len]);
+    const extA = GD.wallCornerExt(floor, w, w.a), extB = GD.wallCornerExt(floor, w, w.b);
     const sel = isSel("wall", w.id);
-    for (const [s, e] of segs) {
+    for (let [s, e] of segs) {
+      if (s < 0.01) s = -extA;                       // Anfangssegment bis zur Ecke verlängern
+      if (Math.abs(e - len) < 0.01) e = len + extB;  // Endsegment bis zur Ecke verlängern
       const a = GD.geom.add(w.a, GD.geom.mul(u, s)), b = GD.geom.add(w.a, GD.geom.mul(u, e));
       const q = wallQuad({ a, b, thickness: w.thickness });
       el("polygon", { points: q.map(p => W2S(p.x, p.y).join(",")).join(" "), class: "wall" + (sel ? " sel" : "") }, svg);
@@ -115,52 +121,88 @@ GD.view2d = (function () {
     return W2S(p.x, p.y);
   }
 
+  // Welche Seite der Wand (entlang der Normale +n) zeigt ins Gebäude-Innere? +1 / -1
+  function wallInsideSign(floor, w) {
+    const u = GD.geom.norm(GD.geom.sub(w.b, w.a)), n = GD.geom.perp(u);
+    const m = GD.geom.lerp(w.a, w.b, 0.5), off = Math.max(w.thickness, 25) + 12;
+    const inPlus = floor.rooms.some(r => r.poly.length > 2 && GD.geom.pointInPoly({ x: m.x + n.x * off, y: m.y + n.y * off }, r.poly));
+    const inMinus = floor.rooms.some(r => r.poly.length > 2 && GD.geom.pointInPoly({ x: m.x - n.x * off, y: m.y - n.y * off }, r.poly));
+    if (inPlus && !inMinus) return 1;
+    if (inMinus && !inPlus) return -1;
+    return 1;
+  }
+
   function drawOpening(floor, o) {
     const w = floor.walls.find(x => x.id === o.wallId);
     if (!w) return;
     const t = w.thickness, s = o.pos - o.width / 2, e = o.pos + o.width / 2;
-    const sel = isSel("opening", o.id);
-    const cls = sel ? " sel" : "";
-    if (o.type === "window") {
-      // Rahmen + Glaslinie
-      const c1 = wallLocalToScreen(w, s, -t / 2), c2 = wallLocalToScreen(w, e, -t / 2);
-      const c3 = wallLocalToScreen(w, e, t / 2), c4 = wallLocalToScreen(w, s, t / 2);
-      el("polygon", { points: [c1, c2, c3, c4].map(p => p.join(",")).join(" "), class: "win-open" }, svg);
-      el("line", { x1: c1[0], y1: c1[1], x2: c2[0], y2: c2[1], class: "win-frame" + cls }, svg);
-      el("line", { x1: c4[0], y1: c4[1], x2: c3[0], y2: c3[1], class: "win-frame" + cls }, svg);
-      const m1 = wallLocalToScreen(w, s, 0), m2 = wallLocalToScreen(w, e, 0);
-      el("line", { x1: m1[0], y1: m1[1], x2: m2[0], y2: m2[1], class: "win-glass" + cls }, svg);
-    } else {
-      // Türöffnung: Wand-Aussparung weiß
-      const c1 = wallLocalToScreen(w, s, -t / 2), c2 = wallLocalToScreen(w, e, -t / 2), c3 = wallLocalToScreen(w, e, t / 2), c4 = wallLocalToScreen(w, s, t / 2);
-      el("polygon", { points: [c1, c2, c3, c4].map(p => p.join(",")).join(" "), class: "win-open" }, svg);
-      const sideOff = (o.swing === "right") ? t / 2 : -t / 2;
-      if (o.type === "door-double") {
-        drawLeaf(w, s, s + o.width / 2, sideOff, false, cls);
-        drawLeaf(w, e, e - o.width / 2, sideOff, true, cls);
-      } else if (o.type === "door-slide") {
-        const a = wallLocalToScreen(w, s, 0), b = wallLocalToScreen(w, e, 0);
-        el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: "door-leaf" + cls }, svg);
-        const a2 = wallLocalToScreen(w, s + o.width * .15, sideOff * .8), b2 = wallLocalToScreen(w, e + o.width * .1, sideOff * .8);
-        el("line", { x1: a2[0], y1: a2[1], x2: b2[0], y2: b2[1], class: "door-leaf" + cls }, svg);
+    const cls = isSel("opening", o.id) ? " sel" : "";
+    const c1 = wallLocalToScreen(w, s, -t / 2), c2 = wallLocalToScreen(w, e, -t / 2), c3 = wallLocalToScreen(w, e, t / 2), c4 = wallLocalToScreen(w, s, t / 2);
+    el("polygon", { points: [c1, c2, c3, c4].map(p => p.join(",")).join(" "), class: "win-open" }, svg);
+    if (GD.isWindow(o.type)) drawWindow(floor, w, o, s, e, t, cls);
+    else drawDoor(floor, w, o, s, e, t, cls);
+  }
+
+  function drawWindow(floor, w, o, s, e, t, cls) {
+    const line = (off, c) => { const a = wallLocalToScreen(w, s, off), b = wallLocalToScreen(w, e, off); el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: c + cls }, svg); };
+    line(-t / 2, "win-frame"); line(t / 2, "win-frame");          // Laibungen
+    if (o.type === "window-fixed") { line(-t * 0.2, "win-glass"); line(t * 0.2, "win-glass"); }
+    else line(0, "win-glass");
+    if (o.type === "window-double") {                              // Mittelpfosten
+      const a = wallLocalToScreen(w, o.pos, -t / 2), b = wallLocalToScreen(w, o.pos, t / 2);
+      el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: "win-frame" + cls }, svg);
+    }
+    // Öffnungs-Anschlag nach innen (Fenster öffnen i.d.R. nach innen); nicht bei Festverglasung
+    const def = GD.openingDefs[o.type];
+    if (def && def.hinge) {
+      const inside = wallInsideSign(floor, w), hinge = o.hinge || "left";
+      if (o.type === "window-double") {
+        const fw = Math.min(o.width / 2, 50);                  // je ein Flügel von beiden Seiten
+        drawLeaf(w, s, s + fw, inside, cls, "win-sash", "win-sash-arc");
+        drawLeaf(w, e, e - fw, inside, cls, "win-sash", "win-sash-arc");
       } else {
-        const hinge = o.flip ? e : s, tip = o.flip ? s : e;
-        drawLeaf(w, hinge, tip, sideOff, o.flip, cls);
+        const fw = Math.min(o.width, 60);                      // realistische Flügelbreite
+        const hA = hinge === "left" ? s : e, tA = hinge === "left" ? s + fw : e - fw;
+        drawLeaf(w, hA, tA, inside, cls, "win-sash", "win-sash-arc");
       }
     }
   }
 
-  // Türblatt von hinge(along) zu tip(along), schwenkt zur Seite sideOff
-  function drawLeaf(w, hingeAlong, tipAlong, sideOff, flip, cls) {
+  function drawDoor(floor, w, o, s, e, t, cls) {
+    const hinge = o.hinge || o.swing || "left";
+    const dir = o.dir || (o.flip ? "out" : "in");
+    const inside = wallInsideSign(floor, w);
+    const side = (dir === "in") ? inside : -inside;
+    if (o.type === "door-double") {
+      drawLeaf(w, s, s + o.width / 2, side, cls);
+      drawLeaf(w, e, e - o.width / 2, side, cls);
+    } else if (o.type === "door-slide") {
+      const off = side * t * 0.55;
+      const a = wallLocalToScreen(w, s, off), b = wallLocalToScreen(w, e, off);
+      el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: "door-leaf" + cls }, svg);
+      const tip = wallLocalToScreen(w, hinge === "left" ? e : s, off);
+      el("circle", { cx: tip[0], cy: tip[1], r: 2.6, class: "door-leaf" + cls }, svg);
+    } else if (o.type === "door-fold") {
+      const hA = hinge === "left" ? s : e, d = hinge === "left" ? 1 : -1, seg = o.width / 2;
+      const pts = [[hA, 0], [hA + d * seg * 0.5, side * seg * 0.5], [hA + d * seg, 0], [hA + d * seg * 1.5, side * seg * 0.5], [hA + d * o.width, 0]]
+        .map(([al, of]) => wallLocalToScreen(w, al, of));
+      el("path", { d: "M " + pts.map(p => p.join(" ")).join(" L "), class: "door-leaf" + cls, fill: "none" }, svg);
+    } else {
+      drawLeaf(w, hinge === "left" ? s : e, hinge === "left" ? e : s, side, cls);
+    }
+  }
+
+  // Flügel: vom Scharnier senkrecht zur Wandseite (side = +1/-1), plus Schwenkbogen
+  function drawLeaf(w, hingeAlong, tipAlong, side, cls, leafCls, arcCls) {
+    leafCls = leafCls || "door-leaf"; arcCls = arcCls || "door-arc";
     const width = Math.abs(tipAlong - hingeAlong);
     const hinge = wallLocalToScreen(w, hingeAlong, 0);
-    // Türblatt: vom Scharnier senkrecht in den Raum
-    const leafEnd = wallLocalToScreen(w, hingeAlong, sideOff > 0 ? width : -width);
-    el("line", { x1: hinge[0], y1: hinge[1], x2: leafEnd[0], y2: leafEnd[1], class: "door-leaf" + cls }, svg);
-    // Schwenkbogen vom Türblattende zum Anschlag
+    const leafEnd = wallLocalToScreen(w, hingeAlong, side * width);
+    el("line", { x1: hinge[0], y1: hinge[1], x2: leafEnd[0], y2: leafEnd[1], class: leafCls + cls }, svg);
     const tip = wallLocalToScreen(w, tipAlong, 0);
     const rPx = GD.geom.dist({ x: hinge[0], y: hinge[1] }, { x: tip[0], y: tip[1] });
-    el("path", { d: `M ${leafEnd[0]} ${leafEnd[1]} A ${rPx} ${rPx} 0 0 ${sideOff > 0 ? (tipAlong > hingeAlong ? 1 : 0) : (tipAlong > hingeAlong ? 0 : 1)} ${tip[0]} ${tip[1]}`, class: "door-arc" + cls }, svg);
+    const sweep = side > 0 ? (tipAlong > hingeAlong ? 1 : 0) : (tipAlong > hingeAlong ? 0 : 1);
+    el("path", { d: `M ${leafEnd[0]} ${leafEnd[1]} A ${rPx} ${rPx} 0 0 ${sweep} ${tip[0]} ${tip[1]}`, class: arcCls + cls }, svg);
   }
 
   function drawItem(it) {
@@ -188,6 +230,58 @@ GD.view2d = (function () {
     t.textContent = (len / 100).toFixed(2) + " m";
   }
 
+  /* ---------- Automatische Bemaßung (Bauplan-Standard) ---------- */
+  // Eine Maßstrecke a→b, Maßlinie um perpPx (Screen) versetzt, mit Hilfslinien,
+  // 45°-Maßbegrenzung und Maßzahl (in m). inner = Innenmaß (Akzentfarbe).
+  function drawMeasure(a, b, perpPx, inner) {
+    const A = W2S(a.x, a.y), B = W2S(b.x, b.y);
+    const dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+    const A2 = [A[0] + nx * perpPx, A[1] + ny * perpPx], B2 = [B[0] + nx * perpPx, B[1] + ny * perpPx];
+    const cls = inner ? " in" : "";
+    if (!inner) {
+      el("line", { x1: A[0], y1: A[1], x2: A2[0] + nx * 4, y2: A2[1] + ny * 4, class: "adim-help" }, svg);
+      el("line", { x1: B[0], y1: B[1], x2: B2[0] + nx * 4, y2: B2[1] + ny * 4, class: "adim-help" }, svg);
+    }
+    el("line", { x1: A2[0], y1: A2[1], x2: B2[0], y2: B2[1], class: "adim-line" + cls }, svg);
+    const s = 4.5, tdx = (ux + nx) * s, tdy = (uy + ny) * s;
+    for (const P of [A2, B2]) el("line", { x1: P[0] - tdx, y1: P[1] - tdy, x2: P[0] + tdx, y2: P[1] + tdy, class: "adim-tick" + cls }, svg);
+    if (len > 18) {
+      const mx = (A2[0] + B2[0]) / 2, my = (A2[1] + B2[1]) / 2;
+      let ang = Math.atan2(dy, dx) * 180 / Math.PI; if (ang > 90 || ang < -90) ang += 180;
+      const t = el("text", { x: mx, y: my, dy: "-2.5", class: "adim-text" + cls, transform: `rotate(${ang} ${mx} ${my})` }, svg);
+      t.textContent = (GD.geom.dist(a, b) / 100).toFixed(2);
+    }
+  }
+
+  function uniqueAxis(vals) {
+    const out = []; vals.sort((a, b) => a - b);
+    for (const v of vals) if (!out.length || Math.abs(out[out.length - 1] - v) > 1) out.push(v);
+    return out;
+  }
+  function drawAutoDims(floor) {
+    const wpts = []; floor.walls.forEach(w => wpts.push(w.a, w.b));
+    if (wpts.length >= 2) {
+      const b = GD.geom.bbox(wpts);
+      const vx = uniqueAxis(floor.walls.filter(w => Math.abs(w.a.x - w.b.x) < 1).map(w => w.a.x).concat([b.minX, b.maxX]));
+      const hy = uniqueAxis(floor.walls.filter(w => Math.abs(w.a.y - w.b.y) < 1).map(w => w.a.y).concat([b.minY, b.maxY]));
+      // Oben: Einzelmaße (Wandabschnitte) + Gesamtmaß
+      for (let i = 0; i < vx.length - 1; i++) drawMeasure({ x: vx[i], y: b.minY }, { x: vx[i + 1], y: b.minY }, -30);
+      if (vx.length > 2) drawMeasure({ x: b.minX, y: b.minY }, { x: b.maxX, y: b.minY }, -56);
+      // Links: Einzelmaße + Gesamtmaß
+      for (let i = 0; i < hy.length - 1; i++) drawMeasure({ x: b.minX, y: hy[i] }, { x: b.minX, y: hy[i + 1] }, 30);
+      if (hy.length > 2) drawMeasure({ x: b.minX, y: b.minY }, { x: b.minX, y: b.maxY }, 56);
+    }
+    // Innenmaße je Raum (lichte Breite/Länge an oberer/linker Kante)
+    for (const r of floor.rooms) {
+      if (r.poly.length < 3) continue;
+      const rb = GD.geom.bbox(r.poly);
+      if (rb.w > 60) drawMeasure({ x: rb.minX, y: rb.minY }, { x: rb.maxX, y: rb.minY }, 22, true);
+      if (rb.h > 60) drawMeasure({ x: rb.minX, y: rb.minY }, { x: rb.minX, y: rb.maxY }, -22, true);
+    }
+  }
+
   function drawLabel(l) {
     const [sx, sy] = W2S(l.x, l.y);
     const t = el("text", { x: sx, y: sy, class: "free-label" + (isSel("label", l.id) ? " sel" : ""), "font-size": l.size, transform: `rotate(${l.rot} ${sx} ${sy})` }, svg);
@@ -205,6 +299,50 @@ GD.view2d = (function () {
   }
 
   /* ---------- Auswahl-Overlays ---------- */
+  /* ---------- Geschoss-Orientierung (Ghost) + Dach-Andeutung ---------- */
+  function ghostFloor() {
+    const floors = GD.state.project.floors, cur = GD.state.activeFloor();
+    let below = null, above = null;
+    floors.forEach(f => {
+      if (f.id === cur.id) return;
+      if (f.elevation <= cur.elevation && (!below || f.elevation > below.elevation)) below = f;
+      if (f.elevation >= cur.elevation && (!above || f.elevation < above.elevation)) above = f;
+    });
+    return below || above;
+  }
+  function drawGhost(cur) {
+    const g = ghostFloor(); if (!g) return;
+    g.rooms.forEach(r => { if (r.poly.length < 3) return; el("polygon", { points: r.poly.map(p => W2S(p.x, p.y).join(",")).join(" "), class: "ghost-room" }, svg); });
+    g.walls.forEach(w => { const q = wallQuad(w); el("polygon", { points: q.map(p => W2S(p.x, p.y).join(",")).join(" "), class: "ghost-wall" }, svg); });
+    const [lx, ly] = W2S(0, 0);
+    const t = el("text", { x: lx + 22, y: ly + 16, class: "ghost-label" }, svg); t.textContent = "⊘ " + g.name + (g.elevation < cur.elevation ? " (darunter)" : " (darüber)");
+  }
+  function drawOriginMarker() {
+    const [ox, oy] = W2S(0, 0), s = 13;
+    el("line", { x1: ox - s, y1: oy, x2: ox + s, y2: oy, class: "origin-mark" }, svg);
+    el("line", { x1: ox, y1: oy - s, x2: ox, y2: oy + s, class: "origin-mark" }, svg);
+    el("circle", { cx: ox, cy: oy, r: 3.5, class: "origin-dot" }, svg);
+    const t = el("text", { x: ox + 9, y: oy - 7, class: "origin-label" }, svg); t.textContent = "Nullpunkt 0,0";
+  }
+  function drawRoofHint(floor) {
+    const r = floor.roof; if (!r || !r.enabled) return;
+    const pts = []; floor.walls.forEach(w => pts.push(w.a, w.b)); if (pts.length < 2) return;
+    const b = GD.geom.bbox(pts), ov = r.overhang || 0;
+    const x0 = b.minX - ov, x1 = b.maxX + ov, y0 = b.minY - ov, y1 = b.maxY + ov;
+    el("polygon", { points: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => W2S(x, y).join(",")).join(" "), class: "roof-hint" }, svg);
+    const ridgeX = (r.ridge === "x") || (r.ridge === "auto" && (x1 - x0) >= (y1 - y0));
+    let a = null, b2 = null;
+    if (r.type === "gable" || r.type === "hip") {
+      if (ridgeX) { const ym = (y0 + y1) / 2; a = W2S(x0, ym); b2 = W2S(x1, ym); } else { const xm = (x0 + x1) / 2; a = W2S(xm, y0); b2 = W2S(xm, y1); }
+    } else if (r.type === "pent") {
+      if (ridgeX) { a = W2S(x0, y0); b2 = W2S(x1, y0); } else { a = W2S(x0, y0); b2 = W2S(x0, y1); }
+    }
+    if (a) el("line", { x1: a[0], y1: a[1], x2: b2[0], y2: b2[1], class: "roof-ridge" }, svg);
+    const names = { gable: "Satteldach", hip: "Walmdach", pent: "Pultdach", flat: "Flachdach" };
+    const [lx, ly] = W2S((x0 + x1) / 2, y0);
+    const t = el("text", { x: lx, y: ly - 6, class: "roof-label" }, svg); t.textContent = "△ " + (names[r.type] || "Dach");
+  }
+
   function drawSelection(floor) {
     for (const s of (ed().selected || [])) {
       if (s.kind === "item") {
@@ -319,7 +457,7 @@ GD.view2d = (function () {
     floor.walls.forEach(w => { pts.push(w.a, w.b); });
     floor.rooms.forEach(r => r.poly.forEach(p => pts.push(p)));
     if (!pts.length) { view.scale = 0.55; view.tx = 80; view.ty = 80; render(); return; }
-    const b = GD.geom.bbox(pts), pad = 90;
+    const b = GD.geom.bbox(pts), pad = GD.state.project.settings.showDims ? 130 : 90;
     const Wd = wrap.clientWidth, Ht = wrap.clientHeight;
     view.scale = Math.min(12, Math.max(0.03, Math.min((Wd - pad * 2) / (b.w || 1), (Ht - pad * 2) / (b.h || 1))));
     view.tx = (Wd - b.w * view.scale) / 2 - b.minX * view.scale;

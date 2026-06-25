@@ -188,12 +188,24 @@ body.compact .icon-btn{width:28px;height:26px}
 .door-leaf.sel{stroke:var(--accent)}
 .door-arc{stroke:var(--txt-dim);stroke-width:1;fill:none;stroke-dasharray:4 3}
 .door-arc.sel{stroke:var(--accent)}
+.win-sash{stroke:var(--accent);stroke-width:1;fill:none;opacity:.7}
+.win-sash.sel{stroke:#ff6b6b}
+.win-sash-arc{stroke:var(--accent);stroke-width:.8;fill:none;opacity:.45;stroke-dasharray:3 3}
+.win-sash-arc.sel{stroke:#ff6b6b}
 .item .sym{stroke:var(--sym-stroke);fill:none;stroke-width:1.4;vector-effect:non-scaling-stroke}
 .item .sym-arrow{stroke:var(--accent);fill:none;stroke-width:1.4;vector-effect:non-scaling-stroke}
 .item.sel .sym{stroke:var(--accent)}
 .item-label{fill:var(--txt-dim);font-size:11px;text-anchor:middle;vector-effect:non-scaling-stroke}
 .room-name{fill:var(--txt);font-size:13px;font-weight:600;text-anchor:middle;pointer-events:none}
 .room-sub{fill:var(--txt-dim);font-size:11px;text-anchor:middle;pointer-events:none}
+/* Automatische Bemaßung */
+.adim-line{stroke:var(--txt-dim);stroke-width:.8}
+.adim-line.in{stroke:var(--accent);opacity:.65}
+.adim-help{stroke:var(--txt-dim);stroke-width:.6;opacity:.45}
+.adim-tick{stroke:var(--txt-dim);stroke-width:1.2}
+.adim-tick.in{stroke:var(--accent)}
+.adim-text{fill:var(--txt-soft);font-size:9.5px;text-anchor:middle;paint-order:stroke;stroke:var(--canvas-bg);stroke-width:3px;stroke-linejoin:round}
+.adim-text.in{fill:var(--accent)}
 .dim-line{stroke:var(--dim);stroke-width:1.2}.dim-line.sel{stroke-width:2.2}
 .dim-help{stroke:var(--dim);stroke-width:.6;opacity:.7}
 .dim-tick{fill:var(--dim)}
@@ -210,3 +222,14 @@ body.compact .icon-btn{width:28px;height:26px}
 .draft-wall{fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4}
 .draft-room{fill:rgba(79,140,255,.1);stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4}
 .draft-node{fill:var(--accent)}
+/* Geschoss-Orientierung (Ghost) */
+.ghost-wall{fill:var(--txt-dim);opacity:.16;stroke:none}
+.ghost-room{fill:none;stroke:var(--txt-dim);stroke-width:1;stroke-dasharray:3 5;opacity:.4}
+.ghost-label{fill:var(--txt-dim);font-size:11px;opacity:.7}
+.origin-mark{stroke:#ff9f43;stroke-width:1.4}
+.origin-dot{fill:#ff9f43}
+.origin-label{fill:#ff9f43;font-size:10px;font-weight:600}
+/* Dach-Andeutung im 2D-Plan */
+.roof-hint{fill:none;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:9 6;opacity:.55}
+.roof-ridge{stroke:var(--accent);stroke-width:1.4;stroke-dasharray:4 4;opacity:.8}
+.roof-label{fill:var(--accent);font-size:11px;font-weight:600;text-anchor:middle;opacity:.85}

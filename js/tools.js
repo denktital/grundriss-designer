@@ -86,12 +86,29 @@ GD.editor = (function () {
     // 2) Objekt unter Cursor
     const hit = V().hitTest(mouseW);
     if (hit) {
-      if (!isSelected(hit.kind, hit.id)) selectOne(hit.kind, hit.id, evt.shiftKey);
-      beginDrag({ mode: "move", kind: hit.kind, id: hit.id });
+      // Shift = Auswahl nur umschalten (hinzufügen/entfernen), kein Verschieben
+      if (evt.shiftKey) { selectOne(hit.kind, hit.id, true); return; }
+      // Noch nicht ausgewählt: erst NUR auswählen – Verschieben erst beim nächsten Greifen
+      if (!isSelected(hit.kind, hit.id)) { selectOne(hit.kind, hit.id, false); return; }
+      // Bereits ausgewählt: jetzt darf gezogen werden (einzeln oder als Gruppe)
+      if (selected.length > 1) beginGroupDrag();
+      else beginDrag({ mode: "move", kind: hit.kind, id: hit.id });
     } else {
       if (!evt.shiftKey) clearSel();
       drag = { mode: "marquee", px, start: { x: mouseW.x, y: mouseW.y } };
     }
+  }
+
+  function beginGroupDrag() {
+    const fl = floor();
+    const items = selected.map(s => ({ s, orig: GD.state.clone(findObj(fl, s.kind, s.id)) })).filter(x => x.orig);
+    drag = { mode: "group", startW: { x: mouseW.x, y: mouseW.y }, items, didSnap: false };
+  }
+  function snapDelta(d) { const g = GD.state.project.settings.gridCm; return Math.round(d / g) * g; }
+  function shiftObject(o, kind, orig, dx, dy) {
+    if (kind === "item" || kind === "label") { o.x = orig.x + dx; o.y = orig.y + dy; }
+    else if (kind === "wall" || kind === "dim") { o.a = { x: orig.a.x + dx, y: orig.a.y + dy }; o.b = { x: orig.b.x + dx, y: orig.b.y + dy }; }
+    else if (kind === "room") { o.poly = orig.poly.map(p => ({ x: p.x + dx, y: p.y + dy })); }
   }
 
   function rotateHandlePos(it) {
@@ -144,6 +161,9 @@ GD.editor = (function () {
       const it = fl.furniture.find(i => i.id === drag.id);
       let ang = Math.atan2(mouseW.y - it.y, mouseW.x - it.x) * 180 / Math.PI + 90;
       ang = Math.round(ang / 15) * 15; it.rot = ((ang % 360) + 360) % 360;
+    } else if (drag.mode === "group") {
+      const dx = snapDelta(mouseW.x - drag.startW.x), dy = snapDelta(mouseW.y - drag.startW.y);
+      for (const it of drag.items) { const o = findObj(fl, it.s.kind, it.s.id); if (o) shiftObject(o, it.s.kind, it.orig, dx, dy); }
     }
     GD.state.touch();
   }
@@ -216,8 +236,8 @@ GD.editor = (function () {
     let best = null, bestD = 1e9, bestPos = 0;
     for (const w of fl.walls) { const pr = GD.geom.projectOnSeg(mouseW, w.a, w.b); if (pr.dist < bestD) { bestD = pr.dist; best = w; bestPos = pr.t * GD.geom.dist(w.a, w.b); } }
     if (!best || bestD > best.thickness / 2 + 30) { GD.ui && GD.ui.toast && GD.ui.toast("Bitte auf eine Wand klicken"); return; }
-    const type = tool === "window" ? "window" : tool === "door-double" ? "door-double" : tool === "door-slide" ? "door-slide" : "door-single";
-    const width = type === "window" ? 100 : type === "door-double" ? 120 : 90;
+    const type = tool === "window" ? "window" : "door-single";
+    const width = GD.isWindow(type) ? 100 : 90;
     const len = GD.geom.dist(best.a, best.b);
     const pos = Math.max(width / 2, Math.min(bestPos, len - width / 2));
     GD.state.commitStructure(() => { const o = GD.make.opening(best.id, pos, width, type); fl.openings.push(o); selected = [{ kind: "opening", id: o.id }]; });
@@ -251,6 +271,21 @@ GD.editor = (function () {
   }
 
   /* ---------- Aktionen (vom Kontextmenü / Tastatur) ---------- */
+  function nudgeSelection(dx, dy) {
+    const fl = floor();
+    GD.state.commit(() => {
+      for (const s of selected) {
+        const o = findObj(fl, s.kind, s.id); if (!o) continue;
+        if (s.kind === "item" || s.kind === "label") { o.x += dx; o.y += dy; }
+        else if (s.kind === "wall" || s.kind === "dim") { o.a.x += dx; o.a.y += dy; o.b.x += dx; o.b.y += dy; }
+        else if (s.kind === "room") { o.poly.forEach(p => { p.x += dx; p.y += dy; }); }
+        else if (s.kind === "opening") { const w = fl.walls.find(x => x.id === o.wallId); if (w) { const len = GD.geom.dist(w.a, w.b); o.pos = Math.max(o.width / 2, Math.min(o.pos + (dx || dy), len - o.width / 2)); } }
+      }
+    });
+    V().render();
+    if (GD.ui && GD.ui.buildProps) GD.ui.buildProps();
+  }
+
   function deleteSelection() {
     if (!selected.length) return;
     const fl = floor();
@@ -286,8 +321,9 @@ GD.editor = (function () {
   }
   function flipOpening() {
     const fl = floor();
-    GD.state.commit(() => { for (const s of selected) if (s.kind === "opening") { const o = fl.openings.find(x => x.id === s.id); o.swing = o.swing === "left" ? "right" : "left"; o.flip = !o.flip; } });
+    GD.state.commit(() => { for (const s of selected) if (s.kind === "opening") { const o = fl.openings.find(x => x.id === s.id); o.hinge = (o.hinge || "left") === "left" ? "right" : "left"; } });
     V().render();
+    if (GD.ui && GD.ui.buildProps) GD.ui.buildProps();
   }
 
   /* ---------- Init ---------- */
@@ -308,6 +344,13 @@ GD.editor = (function () {
     if (typing) return;
     if (e.key === "Escape") { if (draft) cancelDraft(); else if (tool !== "select") setTool("select"); else clearSel(); }
     if (e.key === "Enter" && draft) finishDraft();
+    const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (arrow[e.key] && selected.length) {
+      e.preventDefault();
+      const g = GD.state.project.settings.gridCm, step = e.shiftKey ? Math.max(1, Math.round(g / 5)) : g;
+      nudgeSelection(arrow[e.key][0] * step, arrow[e.key][1] * step);
+      return;
+    }
     if ((e.key === "Delete" || e.key === "Backspace")) { e.preventDefault(); deleteSelection(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? GD.state.redo() : GD.state.undo(); }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") { e.preventDefault(); GD.state.redo(); }

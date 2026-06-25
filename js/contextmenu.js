@@ -29,11 +29,11 @@ GD.contextmenu = (function () {
       items.push({ label: "90° drehen", ic: "⟳", act: () => E.rotateSelection(90) });
       items.push({ label: "Duplizieren", ic: "⧉", sc: "Strg+D", act: () => E.duplicateSelection() });
     } else if (kind === "opening") {
-      items.push({ label: "Spiegeln (Anschlag)", ic: "⇋", act: () => E.flipOpening() });
       const o = fl.openings.find(x => sel.some(s => s.id === x.id));
-      ["window", "door-single", "door-double", "door-slide"].forEach(tp => {
-        const names = { window: "Fenster", "door-single": "Drehtür", "door-double": "Doppeltür", "door-slide": "Schiebetür" };
-        items.push({ label: "Typ: " + names[tp], ic: o && o.type === tp ? "●" : "○", act: () => changeOpeningType(tp) });
+      const cat = o ? GD.openingCat(o.type) : "door";
+      if (cat === "door") items.push({ label: "Anschlag spiegeln", ic: "⇋", act: () => E.flipOpening() });
+      GD.openingTypesByCat(cat).forEach(tp => {
+        items.push({ label: GD.openingDefs[tp].name, ic: o && o.type === tp ? "●" : "○", act: () => changeOpeningType(tp) });
       });
     } else if (kind === "room") {
       items.push({ label: "Umbenennen…", ic: "✎", act: () => renameRoom() });
@@ -78,9 +78,7 @@ GD.contextmenu = (function () {
     GD.state.commit(() => {
       GD.editor.selected.forEach(s => {
         if (s.kind !== "opening") return;
-        const o = fl.openings.find(x => x.id === s.id); o.type = tp;
-        if (tp === "window") { o.sill = o.sill || 90; if (!o.height || o.height > 260) o.height = 120; o.width = Math.max(o.width, 80); }
-        else { o.sill = 0; if (!o.height || o.height < 140) o.height = 200; }
+        GD.setOpeningType(fl.openings.find(x => x.id === s.id), tp);
       });
     });
     GD.view2d.render();

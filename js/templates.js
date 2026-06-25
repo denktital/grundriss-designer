@@ -44,7 +44,9 @@ GD.templates = (function () {
       }
       if (best && bestDist < 60) {
         const o = GD.make.opening(best.id, bestPos, d.width, d.type);
-        if (d.swing) o.swing = d.swing; if (d.flip) o.flip = d.flip;
+        if (d.swing) o.hinge = d.swing;
+        if (d.hinge) o.hinge = d.hinge;
+        if (d.dir) o.dir = d.dir;
         ops.push(o);
       }
     }
