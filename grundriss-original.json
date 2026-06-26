@@ -1,0 +1,1164 @@
+{
+  "name": "Haus – Originalplan",
+  "floors": [
+    {
+      "id": "floor_1yq5",
+      "name": "Erdgeschoss",
+      "elevation": 0,
+      "wallHeight": 250,
+      "walls": [
+        {
+          "id": "wall_2yq6",
+          "a": {
+            "x": 580,
+            "y": 0
+          },
+          "b": {
+            "x": 1350,
+            "y": 0
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_3yq6",
+          "a": {
+            "x": 0,
+            "y": 240
+          },
+          "b": {
+            "x": 320,
+            "y": 240
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_4yq6",
+          "a": {
+            "x": 320,
+            "y": 370
+          },
+          "b": {
+            "x": 1350,
+            "y": 370
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_5yq6",
+          "a": {
+            "x": 0,
+            "y": 620
+          },
+          "b": {
+            "x": 1350,
+            "y": 620
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_6yq6",
+          "a": {
+            "x": 0,
+            "y": 240
+          },
+          "b": {
+            "x": 0,
+            "y": 620
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_7yq6",
+          "a": {
+            "x": 320,
+            "y": 240
+          },
+          "b": {
+            "x": 320,
+            "y": 620
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_8yq6",
+          "a": {
+            "x": 580,
+            "y": 0
+          },
+          "b": {
+            "x": 580,
+            "y": 620
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_9yq6",
+          "a": {
+            "x": 855,
+            "y": 370
+          },
+          "b": {
+            "x": 855,
+            "y": 620
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_10yq6",
+          "a": {
+            "x": 905,
+            "y": 0
+          },
+          "b": {
+            "x": 905,
+            "y": 370
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_11yq6",
+          "a": {
+            "x": 1065,
+            "y": 370
+          },
+          "b": {
+            "x": 1065,
+            "y": 620
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_12yq6",
+          "a": {
+            "x": 1350,
+            "y": 0
+          },
+          "b": {
+            "x": 1350,
+            "y": 620
+          },
+          "thickness": 18,
+          "height": null
+        }
+      ],
+      "rooms": [
+        {
+          "id": "room_13yq6",
+          "name": "Küche",
+          "poly": [
+            {
+              "x": 580,
+              "y": 0
+            },
+            {
+              "x": 905,
+              "y": 0
+            },
+            {
+              "x": 905,
+              "y": 370
+            },
+            {
+              "x": 580,
+              "y": 370
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 215
+        },
+        {
+          "id": "room_14yq6",
+          "name": "Wohn- / Essbereich",
+          "poly": [
+            {
+              "x": 905,
+              "y": 0
+            },
+            {
+              "x": 1350,
+              "y": 0
+            },
+            {
+              "x": 1350,
+              "y": 370
+            },
+            {
+              "x": 905,
+              "y": 370
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 215
+        },
+        {
+          "id": "room_15yq6",
+          "name": "Wohn- / Essbereich",
+          "poly": [
+            {
+              "x": 1065,
+              "y": 370
+            },
+            {
+              "x": 1350,
+              "y": 370
+            },
+            {
+              "x": 1350,
+              "y": 620
+            },
+            {
+              "x": 1065,
+              "y": 620
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 215
+        },
+        {
+          "id": "room_16yq6",
+          "name": "Treppe",
+          "poly": [
+            {
+              "x": 580,
+              "y": 370
+            },
+            {
+              "x": 855,
+              "y": 370
+            },
+            {
+              "x": 855,
+              "y": 620
+            },
+            {
+              "x": 580,
+              "y": 620
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 225
+        },
+        {
+          "id": "room_17yq6",
+          "name": "Bad / Dusche",
+          "poly": [
+            {
+              "x": 855,
+              "y": 370
+            },
+            {
+              "x": 1065,
+              "y": 370
+            },
+            {
+              "x": 1065,
+              "y": 620
+            },
+            {
+              "x": 855,
+              "y": 620
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 210
+        },
+        {
+          "id": "room_18yq6",
+          "name": "Diele",
+          "poly": [
+            {
+              "x": 320,
+              "y": 370
+            },
+            {
+              "x": 580,
+              "y": 370
+            },
+            {
+              "x": 580,
+              "y": 620
+            },
+            {
+              "x": 320,
+              "y": 620
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 225
+        },
+        {
+          "id": "room_19yq6",
+          "name": "Eingang / Wintergarten",
+          "poly": [
+            {
+              "x": 0,
+              "y": 240
+            },
+            {
+              "x": 320,
+              "y": 240
+            },
+            {
+              "x": 320,
+              "y": 620
+            },
+            {
+              "x": 0,
+              "y": 620
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 225
+        }
+      ],
+      "openings": [
+        {
+          "id": "op_20yq6",
+          "wallId": "wall_2yq6",
+          "pos": 180,
+          "type": "window",
+          "width": 110,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_21yq6",
+          "wallId": "wall_2yq6",
+          "pos": 430,
+          "type": "window",
+          "width": 120,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_22yq6",
+          "wallId": "wall_2yq6",
+          "pos": 650,
+          "type": "window",
+          "width": 120,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_23yq6",
+          "wallId": "wall_12yq6",
+          "pos": 170,
+          "type": "window",
+          "width": 130,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_24yq6",
+          "wallId": "wall_12yq6",
+          "pos": 470,
+          "type": "window",
+          "width": 130,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_25yq6",
+          "wallId": "wall_6yq6",
+          "pos": 190,
+          "type": "window-fixed",
+          "width": 340,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_26yq6",
+          "wallId": "wall_5yq6",
+          "pos": 980.0000000000001,
+          "type": "window",
+          "width": 90,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_27yq6",
+          "wallId": "wall_5yq6",
+          "pos": 160,
+          "type": "door-single",
+          "width": 100,
+          "hinge": "left",
+          "dir": "out",
+          "sill": 0,
+          "height": 200
+        },
+        {
+          "id": "op_28yq6",
+          "wallId": "wall_7yq6",
+          "pos": 230,
+          "type": "door-single",
+          "width": 90,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        },
+        {
+          "id": "op_29yq6",
+          "wallId": "wall_8yq6",
+          "pos": 470,
+          "type": "door-single",
+          "width": 90,
+          "hinge": "right",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        },
+        {
+          "id": "op_30yq6",
+          "wallId": "wall_9yq6",
+          "pos": 110,
+          "type": "door-single",
+          "width": 80,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        },
+        {
+          "id": "op_31yq6",
+          "wallId": "wall_10yq6",
+          "pos": 200,
+          "type": "door-double",
+          "width": 110,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        }
+      ],
+      "furniture": [
+        {
+          "id": "item_32yq6",
+          "type": "sink-corner",
+          "x": 640,
+          "y": 55,
+          "rot": 0,
+          "w": 80,
+          "h": 80,
+          "hh": 90,
+          "label": ""
+        },
+        {
+          "id": "item_33yq6",
+          "type": "stove",
+          "x": 770,
+          "y": 50,
+          "rot": 0,
+          "w": 60,
+          "h": 60,
+          "hh": 90,
+          "label": ""
+        },
+        {
+          "id": "item_34yq6",
+          "type": "counter",
+          "x": 880,
+          "y": 120,
+          "rot": 90,
+          "w": 200,
+          "h": 50,
+          "hh": 90,
+          "label": ""
+        },
+        {
+          "id": "item_35yq6",
+          "type": "table-round",
+          "x": 1090,
+          "y": 150,
+          "rot": 0,
+          "w": 110,
+          "h": 110,
+          "hh": 75,
+          "label": ""
+        },
+        {
+          "id": "item_36yq6",
+          "type": "sofa",
+          "x": 1290,
+          "y": 110,
+          "rot": 90,
+          "w": 200,
+          "h": 90,
+          "hh": 80,
+          "label": ""
+        },
+        {
+          "id": "item_37yq6",
+          "type": "wardrobe",
+          "x": 1280,
+          "y": 470,
+          "rot": 90,
+          "w": 120,
+          "h": 60,
+          "hh": 210,
+          "label": ""
+        },
+        {
+          "id": "item_38yq6",
+          "type": "stairs",
+          "x": 700,
+          "y": 500,
+          "rot": 0,
+          "w": 120,
+          "h": 230,
+          "hh": 0,
+          "label": ""
+        },
+        {
+          "id": "item_39yq6",
+          "type": "basin",
+          "x": 910,
+          "y": 410,
+          "rot": 0,
+          "w": 60,
+          "h": 45,
+          "hh": 85,
+          "label": ""
+        },
+        {
+          "id": "item_40yq6",
+          "type": "fireplace",
+          "x": 1010,
+          "y": 395,
+          "rot": 0,
+          "w": 110,
+          "h": 40,
+          "hh": 120,
+          "label": ""
+        },
+        {
+          "id": "item_41yq6",
+          "type": "bathtub",
+          "x": 1000,
+          "y": 560,
+          "rot": 0,
+          "w": 150,
+          "h": 75,
+          "hh": 55,
+          "label": ""
+        },
+        {
+          "id": "item_42yq6",
+          "type": "shower",
+          "x": 905,
+          "y": 560,
+          "rot": 0,
+          "w": 80,
+          "h": 90,
+          "hh": 5,
+          "label": ""
+        },
+        {
+          "id": "item_43yq6",
+          "type": "plant",
+          "x": 70,
+          "y": 560,
+          "rot": 0,
+          "w": 50,
+          "h": 50,
+          "hh": 60,
+          "label": ""
+        }
+      ],
+      "dims": [],
+      "labels": [],
+      "roof": {
+        "enabled": false,
+        "type": "gable",
+        "height": 200,
+        "overhang": 35,
+        "ridge": "auto",
+        "color": "#9a4a3a"
+      },
+      "underlay": {
+        "src": "Grundriss EG.jpg",
+        "x": -120,
+        "y": -110,
+        "scale": 1.34,
+        "rotation": 0,
+        "opacity": 0.45,
+        "visible": false
+      }
+    },
+    {
+      "id": "floor_44yq6",
+      "name": "Dachgeschoss",
+      "elevation": 250,
+      "wallHeight": 230,
+      "walls": [
+        {
+          "id": "wall_45yq6",
+          "a": {
+            "x": 270,
+            "y": 0
+          },
+          "b": {
+            "x": 1090,
+            "y": 0
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_46yq6",
+          "a": {
+            "x": 655,
+            "y": 250
+          },
+          "b": {
+            "x": 1090,
+            "y": 250
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_47yq6",
+          "a": {
+            "x": 0,
+            "y": 342
+          },
+          "b": {
+            "x": 655,
+            "y": 342
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_48yq6",
+          "a": {
+            "x": 270,
+            "y": 472
+          },
+          "b": {
+            "x": 450,
+            "y": 472
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_49yq6",
+          "a": {
+            "x": 0,
+            "y": 590
+          },
+          "b": {
+            "x": 1090,
+            "y": 590
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_50yq6",
+          "a": {
+            "x": 0,
+            "y": 342
+          },
+          "b": {
+            "x": 0,
+            "y": 590
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_51yq6",
+          "a": {
+            "x": 270,
+            "y": 0
+          },
+          "b": {
+            "x": 270,
+            "y": 590
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_52yq6",
+          "a": {
+            "x": 450,
+            "y": 342
+          },
+          "b": {
+            "x": 450,
+            "y": 590
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_53yq6",
+          "a": {
+            "x": 655,
+            "y": 0
+          },
+          "b": {
+            "x": 655,
+            "y": 590
+          },
+          "thickness": 18,
+          "height": null
+        },
+        {
+          "id": "wall_54yq6",
+          "a": {
+            "x": 1090,
+            "y": 0
+          },
+          "b": {
+            "x": 1090,
+            "y": 590
+          },
+          "thickness": 18,
+          "height": null
+        }
+      ],
+      "rooms": [
+        {
+          "id": "room_55yq6",
+          "name": "Schlafzimmer",
+          "poly": [
+            {
+              "x": 270,
+              "y": 0
+            },
+            {
+              "x": 655,
+              "y": 0
+            },
+            {
+              "x": 655,
+              "y": 342
+            },
+            {
+              "x": 270,
+              "y": 342
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 205
+        },
+        {
+          "id": "room_56yq6",
+          "name": "Kinderzimmer",
+          "poly": [
+            {
+              "x": 655,
+              "y": 0
+            },
+            {
+              "x": 1090,
+              "y": 0
+            },
+            {
+              "x": 1090,
+              "y": 250
+            },
+            {
+              "x": 655,
+              "y": 250
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 205
+        },
+        {
+          "id": "room_57yq6",
+          "name": "Kind / Gast",
+          "poly": [
+            {
+              "x": 655,
+              "y": 250
+            },
+            {
+              "x": 1090,
+              "y": 250
+            },
+            {
+              "x": 1090,
+              "y": 590
+            },
+            {
+              "x": 655,
+              "y": 590
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 205
+        },
+        {
+          "id": "room_58yq6",
+          "name": "Bad / WC",
+          "poly": [
+            {
+              "x": 450,
+              "y": 342
+            },
+            {
+              "x": 655,
+              "y": 342
+            },
+            {
+              "x": 655,
+              "y": 590
+            },
+            {
+              "x": 450,
+              "y": 590
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 205
+        },
+        {
+          "id": "room_59yq6",
+          "name": "Treppe",
+          "poly": [
+            {
+              "x": 270,
+              "y": 342
+            },
+            {
+              "x": 450,
+              "y": 342
+            },
+            {
+              "x": 450,
+              "y": 472
+            },
+            {
+              "x": 270,
+              "y": 472
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 205
+        },
+        {
+          "id": "room_60yq6",
+          "name": "Einbauschrank",
+          "poly": [
+            {
+              "x": 270,
+              "y": 472
+            },
+            {
+              "x": 450,
+              "y": 472
+            },
+            {
+              "x": 450,
+              "y": 590
+            },
+            {
+              "x": 270,
+              "y": 590
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 130
+        },
+        {
+          "id": "room_61yq6",
+          "name": "Speicherraum",
+          "poly": [
+            {
+              "x": 0,
+              "y": 342
+            },
+            {
+              "x": 270,
+              "y": 342
+            },
+            {
+              "x": 270,
+              "y": 590
+            },
+            {
+              "x": 0,
+              "y": 590
+            }
+          ],
+          "color": "#ffffff",
+          "ceiling": 130
+        }
+      ],
+      "openings": [
+        {
+          "id": "op_62yq6",
+          "wallId": "wall_45yq6",
+          "pos": 190,
+          "type": "window",
+          "width": 100,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_63yq6",
+          "wallId": "wall_45yq6",
+          "pos": 464.99999999999994,
+          "type": "window",
+          "width": 100,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_64yq6",
+          "wallId": "wall_54yq6",
+          "pos": 80,
+          "type": "window",
+          "width": 80,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_65yq6",
+          "wallId": "wall_54yq6",
+          "pos": 410,
+          "type": "window",
+          "width": 100,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_66yq6",
+          "wallId": "wall_50yq6",
+          "pos": 128,
+          "type": "window",
+          "width": 100,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_67yq6",
+          "wallId": "wall_49yq6",
+          "pos": 570,
+          "type": "window",
+          "width": 80,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_68yq6",
+          "wallId": "wall_49yq6",
+          "pos": 200,
+          "type": "window",
+          "width": 90,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 90,
+          "height": 120
+        },
+        {
+          "id": "op_69yq6",
+          "wallId": "wall_47yq6",
+          "pos": 459.99999999999994,
+          "type": "door-single",
+          "width": 90,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        },
+        {
+          "id": "op_70yq6",
+          "wallId": "wall_53yq6",
+          "pos": 150,
+          "type": "door-single",
+          "width": 90,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        },
+        {
+          "id": "op_71yq6",
+          "wallId": "wall_53yq6",
+          "pos": 429.99999999999994,
+          "type": "door-single",
+          "width": 90,
+          "hinge": "right",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        },
+        {
+          "id": "op_72yq6",
+          "wallId": "wall_47yq6",
+          "pos": 540,
+          "type": "door-single",
+          "width": 80,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        },
+        {
+          "id": "op_73yq6",
+          "wallId": "wall_51yq6",
+          "pos": 410,
+          "type": "door-single",
+          "width": 80,
+          "hinge": "left",
+          "dir": "in",
+          "sill": 0,
+          "height": 200
+        }
+      ],
+      "furniture": [
+        {
+          "id": "item_74yq6",
+          "type": "bed-double",
+          "x": 400,
+          "y": 130,
+          "rot": 0,
+          "w": 160,
+          "h": 200,
+          "hh": 50,
+          "label": ""
+        },
+        {
+          "id": "item_75yq6",
+          "type": "wardrobe",
+          "x": 600,
+          "y": 130,
+          "rot": 90,
+          "w": 120,
+          "h": 60,
+          "hh": 210,
+          "label": ""
+        },
+        {
+          "id": "item_76yq6",
+          "type": "bed-single",
+          "x": 1000,
+          "y": 150,
+          "rot": 0,
+          "w": 100,
+          "h": 200,
+          "hh": 50,
+          "label": ""
+        },
+        {
+          "id": "item_77yq6",
+          "type": "bed-single",
+          "x": 1000,
+          "y": 430,
+          "rot": 0,
+          "w": 100,
+          "h": 200,
+          "hh": 50,
+          "label": ""
+        },
+        {
+          "id": "item_78yq6",
+          "type": "wc",
+          "x": 530,
+          "y": 540,
+          "rot": 0,
+          "w": 40,
+          "h": 60,
+          "hh": 40,
+          "label": ""
+        },
+        {
+          "id": "item_79yq6",
+          "type": "basin",
+          "x": 480,
+          "y": 380,
+          "rot": 0,
+          "w": 60,
+          "h": 45,
+          "hh": 85,
+          "label": ""
+        },
+        {
+          "id": "item_80yq6",
+          "type": "stairs",
+          "x": 360,
+          "y": 405,
+          "rot": 0,
+          "w": 150,
+          "h": 120,
+          "hh": 0,
+          "label": ""
+        }
+      ],
+      "dims": [],
+      "labels": [],
+      "roof": {
+        "enabled": false,
+        "type": "gable",
+        "height": 200,
+        "overhang": 35,
+        "ridge": "auto",
+        "color": "#9a4a3a"
+      },
+      "underlay": {
+        "src": "Grundriss OG.jpg",
+        "x": -150,
+        "y": -90,
+        "scale": 1.32,
+        "rotation": 0,
+        "opacity": 0.45,
+        "visible": false
+      }
+    }
+  ],
+  "activeFloorId": "floor_1yq5",
+  "settings": {
+    "gridCm": 25,
+    "snapCm": 15,
+    "theme": "dark",
+    "accent": "#4f8cff",
+    "showGrid": true,
+    "showDims": true,
+    "ortho": true,
+    "showGhost": false
+  }
+}
