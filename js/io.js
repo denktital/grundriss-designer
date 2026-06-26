@@ -4,25 +4,45 @@ window.GD = window.GD || {};
 
 GD.io = (function () {
 
-  /* eingebettetes Stylesheet für sauberen SVG-Export (helles Blatt) */
-  const SVG_STYLE = `
-    .room-fill{fill:#f7f8fa;stroke:none}
-    .wall{fill:#222;stroke:none}
-    .win-open{fill:#fff;stroke:none}
-    .win-frame{stroke:#222;stroke-width:1px;fill:none}
-    .win-glass{stroke:#2b6cd4;stroke-width:1.4px;fill:none}
-    .door-leaf{stroke:#222;stroke-width:1.4px;fill:none}
-    .door-arc{stroke:#888;stroke-width:1px;fill:none;stroke-dasharray:4 3}
-    .sym{fill:none;stroke:#444;stroke-width:1.2px;vector-effect:non-scaling-stroke}
-    .sym-arrow{fill:none;stroke:#888;stroke-width:1px;vector-effect:non-scaling-stroke}
-    .item-label{fill:#555;font:11px sans-serif;text-anchor:middle}
-    .dim-line{stroke:#c0392b;stroke-width:1px}.dim-help{stroke:#c0392b;stroke-width:.5px}
-    .dim-tick{fill:#c0392b}.dim-text{fill:#c0392b;font:11px sans-serif;text-anchor:middle}
-    .room-name{fill:#222;font:600 13px sans-serif;text-anchor:middle}
-    .room-sub{fill:#777;font:11px sans-serif;text-anchor:middle}
-    .free-label{fill:#222;font:14px sans-serif;text-anchor:middle}
+  /* Plan-Stilregeln wie auf dem Bildschirm (nutzen die Theme-Variablen) */
+  const PLAN_CSS = `
+    text{font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+    .grid{stroke:var(--grid);stroke-width:1}.grid.strong{stroke:var(--grid-strong)}
+    .room-fill{fill:var(--room-fill);stroke:none}
+    .wall{fill:var(--wall-fill);stroke:none}
+    .win-open{fill:var(--canvas-bg);stroke:none}
+    .win-frame{stroke:var(--line);stroke-width:1.4;fill:none}
+    .win-glass{stroke:var(--accent);stroke-width:1.6;fill:none}
+    .door-leaf{stroke:var(--line);stroke-width:1.6;fill:none}
+    .door-arc{stroke:var(--txt-dim);stroke-width:1;fill:none;stroke-dasharray:4 3}
+    .win-sash{stroke:var(--accent);stroke-width:1;fill:none;opacity:.7}
+    .win-sash-arc{stroke:var(--accent);stroke-width:.8;fill:none;opacity:.45;stroke-dasharray:3 3}
+    .sym{stroke:var(--sym-stroke);fill:none;stroke-width:1.4;vector-effect:non-scaling-stroke}
+    .sym-arrow{stroke:var(--accent);fill:none;stroke-width:1.4;vector-effect:non-scaling-stroke}
+    .item-label{fill:var(--txt-dim);font-size:11px;text-anchor:middle}
+    .room-name{fill:var(--txt);font-size:13px;font-weight:600;text-anchor:middle}
+    .room-sub{fill:var(--txt-dim);font-size:11px;text-anchor:middle}
+    .dim-line{stroke:var(--dim);stroke-width:1.2}.dim-help{stroke:var(--dim);stroke-width:.6;opacity:.7}
+    .dim-tick{fill:var(--dim)}.dim-text{fill:var(--dim);font-size:11px;text-anchor:middle}
+    .free-label{fill:var(--txt);text-anchor:middle}
+    .adim-line{stroke:var(--txt-dim);stroke-width:.8}.adim-line.in{stroke:var(--accent);opacity:.65}
+    .adim-help{stroke:var(--txt-dim);stroke-width:.6;opacity:.45}
+    .adim-tick{stroke:var(--txt-dim);stroke-width:1.2}.adim-tick.in{stroke:var(--accent)}
+    .adim-text{fill:var(--txt-soft);font-size:9.5px;text-anchor:middle;paint-order:stroke;stroke:var(--canvas-bg);stroke-width:3px;stroke-linejoin:round}
+    .adim-text.in{fill:var(--accent)}
+    .ghost-wall{fill:var(--txt-dim);opacity:.16}.ghost-room{fill:none;stroke:var(--txt-dim);stroke-width:1;stroke-dasharray:3 5;opacity:.4}
+    .ghost-label{fill:var(--txt-dim);font-size:11px;opacity:.7}
+    .origin-mark{stroke:#ff9f43;stroke-width:1.4}.origin-dot{fill:#ff9f43}.origin-label{fill:#ff9f43;font-size:10px;font-weight:600}
+    .roof-hint{fill:none;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:9 6;opacity:.55}
+    .roof-ridge{stroke:var(--accent);stroke-width:1.4;stroke-dasharray:4 4;opacity:.8}
+    .roof-label{fill:var(--accent);font-size:11px;font-weight:600;text-anchor:middle;opacity:.85}
   `;
-  const STRIP = ["grid", "node-handle", "rot-handle", "sel-box", "snap-ind", "marquee", "draft-wall", "draft-room", "draft-node", "sel-dot"];
+  // entfernt nur temporäre UI-Overlays (Auswahl/Fang/Hilfslinien) – Raster bleibt wie am Schirm
+  const STRIP = ["node-handle", "rot-handle", "sel-box", "snap-ind", "marquee", "draft-wall", "draft-room", "draft-node", "sel-dot", "edge-hit", "win-hit", "wall-add-hit", "handle"];
+  const THEME_VARS = ["--canvas-bg", "--grid", "--grid-strong", "--wall-fill", "--room-fill", "--line", "--accent", "--txt", "--txt-dim", "--txt-soft", "--sym-stroke", "--dim"];
+  function themeVarStyle() { const cs = getComputedStyle(document.documentElement); return THEME_VARS.map(n => n + ":" + cs.getPropertyValue(n).trim()).join(";"); }
+  function canvasBg() { return getComputedStyle(document.documentElement).getPropertyValue("--canvas-bg").trim() || "#ffffff"; }
+  function hexToRgb(hex) { hex = (hex || "").trim().replace("#", ""); if (hex.length === 3) hex = hex.split("").map(c => c + c).join(""); const n = parseInt(hex, 16); return isNaN(n) ? [255, 255, 255] : [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 
   function download(name, data, mime) {
     const blob = data instanceof Blob ? data : new Blob([data], { type: mime || "text/plain" });
@@ -40,25 +60,47 @@ GD.io = (function () {
     const vb = live.getAttribute("viewBox").split(" ").map(Number);
     clone.setAttribute("width", vb[2]); clone.setAttribute("height", vb[3]);
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    const style = document.createElementNS("http://www.w3.org/2000/svg", "style"); style.textContent = SVG_STYLE;
+    clone.setAttribute("style", themeVarStyle());                    // aktuelle Theme-Farben mitgeben
+    const style = document.createElementNS("http://www.w3.org/2000/svg", "style"); style.textContent = PLAN_CSS;
     const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    bg.setAttribute("x", 0); bg.setAttribute("y", 0); bg.setAttribute("width", vb[2]); bg.setAttribute("height", vb[3]); bg.setAttribute("fill", "#ffffff");
+    bg.setAttribute("x", 0); bg.setAttribute("y", 0); bg.setAttribute("width", vb[2]); bg.setAttribute("height", vb[3]); bg.setAttribute("fill", canvasBg());
     clone.insertBefore(bg, clone.firstChild); clone.insertBefore(style, clone.firstChild);
     return { node: clone, w: vb[2], h: vb[3] };
   }
-  function svgString() { const { node } = cleanSVG(); return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(node); }
+  function serialize(node) { return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(node); }
+  function svgString() { return serialize(cleanSVG().node); }   // synchron, ohne Bild-Einbettung (Kompatibilität)
 
-  function exportSVG() { download((GD.state.project.name || "grundriss") + ".svg", svgString(), "image/svg+xml"); }
+  // Bild (relativer Pfad / URL) in eine eingebettete Daten-URL umwandeln
+  function imageToDataURL(src) {
+    return new Promise((res, rej) => {
+      const img = new Image(); img.crossOrigin = "anonymous";
+      img.onload = () => { const c = document.createElement("canvas"); c.width = img.naturalWidth || 1; c.height = img.naturalHeight || 1; try { c.getContext("2d").drawImage(img, 0, 0); res(c.toDataURL("image/png")); } catch (e) { rej(e); } };
+      img.onerror = () => rej(new Error("load"));
+      img.src = src;
+    });
+  }
+  // Alle <image> (z.B. Vorlage/Underlay) zur Export-Zeit einbetten, damit sie im Bild/PDF erscheinen
+  async function embedImages(node) {
+    for (const im of Array.from(node.querySelectorAll("image"))) {
+      const href = im.getAttribute("href") || im.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+      if (!href || /^data:/i.test(href)) continue;
+      try { const du = await imageToDataURL(href); im.setAttribute("href", du); im.setAttributeNS("http://www.w3.org/1999/xlink", "href", du); }
+      catch (e) { im.remove(); }
+    }
+  }
+  async function exportSvgString() { const { node } = cleanSVG(); await embedImages(node); return serialize(node); }
+
+  async function exportSVG() { download((GD.state.project.name || "grundriss") + ".svg", await exportSvgString(), "image/svg+xml"); }
 
   async function svgToCanvas(scale) {
-    const { w, h } = cleanSVG();
-    const str = svgString();
+    const { node, w, h } = cleanSVG();
+    await embedImages(node);
     const img = new Image();
-    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(str);
+    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(serialize(node));
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
     const s = scale || 2;
     const canvas = document.createElement("canvas"); canvas.width = w * s; canvas.height = h * s;
-    const ctx = canvas.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext("2d"); ctx.fillStyle = canvasBg(); ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     return canvas;
   }
@@ -79,7 +121,10 @@ GD.io = (function () {
     const margin = 12; let w = pw - margin * 2, h = w / ratio;
     if (h > ph - margin * 2) { h = ph - margin * 2; w = h * ratio; }
     const x = (pw - w) / 2, y = (ph - h) / 2;
-    pdf.setFontSize(13); pdf.text(GD.state.project.name || "Grundriss", margin, margin - 3 < 6 ? 8 : margin - 2);
+    const cs = getComputedStyle(document.documentElement);
+    const bg = hexToRgb(cs.getPropertyValue("--canvas-bg")), tx = hexToRgb(cs.getPropertyValue("--txt"));
+    pdf.setFillColor(bg[0], bg[1], bg[2]); pdf.rect(0, 0, pw, ph, "F");   // Seite = Bildschirm-Hintergrund
+    pdf.setFontSize(13); pdf.setTextColor(tx[0], tx[1], tx[2]); pdf.text(GD.state.project.name || "Grundriss", margin, 9);
     pdf.addImage(canvas.toDataURL("image/png"), "PNG", x, y, w, h);
     pdf.save((GD.state.project.name || "grundriss") + ".pdf");
   }
@@ -291,5 +336,5 @@ GD.io = (function () {
   }
   function importImageDialog() { pickFile("image/*", (d) => importImage(d), true); }
 
-  return { exportSVG, exportPNG, exportPDF, exportJSON, importJSON, exportDXF, importDXF, importSVG, importOBJ, importImage, exportOBJ, exportGLTF, pickFile, importDialog, importImageDialog, download, svgString };
+  return { exportSVG, exportPNG, exportPDF, exportJSON, importJSON, exportDXF, importDXF, importSVG, importOBJ, importImage, exportOBJ, exportGLTF, pickFile, importDialog, importImageDialog, download, svgString, exportSvgString };
 })();
