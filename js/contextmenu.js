@@ -35,10 +35,9 @@ GD.contextmenu = (function () {
       GD.openingTypesByCat(cat).forEach(tp => {
         items.push({ label: GD.openingDefs[tp].name, ic: o && o.type === tp ? "●" : "○", act: () => changeOpeningType(tp) });
       });
-    } else if (kind === "room") {
+    } else if (kind === "roomMarker") {
       items.push({ label: "Umbenennen…", ic: "✎", act: () => renameRoom() });
       items.push({ label: "Bodenfarbe…", ic: "🎨", act: () => colorRoom() });
-      items.push({ label: "Duplizieren", ic: "⧉", act: () => E.duplicateSelection() });
     } else if (kind === "wall") {
       items.push({ label: "Wandstärke…", ic: "▭", act: () => wallThickness() });
       items.push({ label: "Duplizieren", ic: "⧉", act: () => E.duplicateSelection() });
@@ -90,12 +89,12 @@ GD.contextmenu = (function () {
     if (GD.ui && GD.ui.buildProps) GD.ui.buildProps();
   }
   function renameRoom() {
-    const fl = GD.state.activeFloor(); const s = GD.editor.selected.find(s => s.kind === "room"); if (!s) return;
-    const r = fl.rooms.find(x => x.id === s.id); const n = prompt("Raumname:", r.name); if (n != null) { GD.state.commit(() => r.name = n); GD.view2d.render(); }
+    const fl = GD.state.activeFloor(); const s = GD.editor.selected.find(s => s.kind === "roomMarker"); if (!s) return;
+    const mk = fl.roomMarkers.find(x => x.id === s.id); const n = prompt("Raumname:", mk.name); if (n != null) { GD.state.commit(() => { mk.name = n; mk.auto = false; }); GD.view2d.render(); }
   }
   function colorRoom() {
-    const fl = GD.state.activeFloor(); const s = GD.editor.selected.find(s => s.kind === "room"); if (!s) return;
-    const r = fl.rooms.find(x => x.id === s.id); const c = prompt("Bodenfarbe (Hex, z.B. #eaf2ff):", r.color || "#ffffff"); if (c) { GD.state.commit(() => r.color = c); GD.view2d.render(); }
+    const fl = GD.state.activeFloor(); const s = GD.editor.selected.find(s => s.kind === "roomMarker"); if (!s) return;
+    const mk = fl.roomMarkers.find(x => x.id === s.id); const c = prompt("Bodenfarbe (Hex, z.B. #eaf2ff):", mk.color || "#ffffff"); if (c) { GD.state.commit(() => { mk.color = c; mk.auto = false; }); GD.view2d.render(); }
   }
   function wallThickness() {
     const fl = GD.state.activeFloor();
@@ -108,7 +107,7 @@ GD.contextmenu = (function () {
       fl.electrical.forEach(e => sel.push({ kind: "electrical", id: e.id }));
       fl.wires.forEach(w => sel.push({ kind: "wire", id: w.id }));
     } else {
-      fl.rooms.forEach(r => sel.push({ kind: "room", id: r.id }));
+      fl.roomMarkers.forEach(mk => sel.push({ kind: "roomMarker", id: mk.id }));
       fl.walls.forEach(w => sel.push({ kind: "wall", id: w.id }));
       fl.furniture.forEach(i => sel.push({ kind: "item", id: i.id }));
     }

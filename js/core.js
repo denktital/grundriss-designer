@@ -135,7 +135,7 @@ GD.make = {
   floor(name) {
     return {
       id: GD.uid("floor"), name: name || "Geschoss", elevation: 0, wallHeight: 260,
-      walls: [], rooms: [], openings: [], furniture: [], dims: [], labels: [],
+      walls: [], rooms: [], roomMarkers: [], openings: [], furniture: [], dims: [], labels: [],
       electrical: [], wires: [],
       roof: { enabled: false, type: "gable", height: 200, overhang: 35, ridge: "auto", color: "#9a4a3a" },
       underlay: { src: "", x: 0, y: 0, scale: 1, rotation: 0, opacity: 0.5, visible: false },
@@ -143,6 +143,7 @@ GD.make = {
   },
   wall(a, b, thickness) { return { id: GD.uid("wall"), a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, thickness: thickness || 18, height: null }; },
   room(poly, name) { return { id: GD.uid("room"), name: name || "Raum", poly: poly.map(p => ({ x: p.x, y: p.y })), color: "#ffffff", ceiling: 260 }; },
+  roomMarker(x, y, name) { return { id: GD.uid("rm"), x, y, name: name || "Raum", color: "#ffffff", ceiling: 260 }; },
   opening(wallId, pos, width, type) {
     type = type || "door-single";
     const win = GD.isWindow(type);
@@ -181,8 +182,8 @@ GD.state = (function () {
     if (undoStack.length > MAX_UNDO) undoStack.shift();
     redoStack = [];
   }
-  function undo() { if (!undoStack.length) return; redoStack.push(clone(project)); project = undoStack.pop(); save(); emit("change"); emit("structure"); emit("rerender"); }
-  function redo() { if (!redoStack.length) return; undoStack.push(clone(project)); project = redoStack.pop(); save(); emit("change"); emit("structure"); emit("rerender"); }
+  function undo() { if (!undoStack.length) return; redoStack.push(clone(project)); project = undoStack.pop(); syncRooms(); save(); emit("change"); emit("structure"); emit("rerender"); }
+  function redo() { if (!redoStack.length) return; undoStack.push(clone(project)); project = redoStack.pop(); syncRooms(); save(); emit("change"); emit("structure"); emit("rerender"); }
   function canUndo() { return undoStack.length > 0; }
   function canRedo() { return redoStack.length > 0; }
 
@@ -192,22 +193,25 @@ GD.state = (function () {
     return null;
   }
 
+  function syncRooms() { if (GD.rooms && project) project.floors.forEach(f => GD.rooms.sync(f)); }
+
   function init() {
     project = load();
     if (!project) { project = GD.templates.buildDefaultProject(); }
     if (!project.activeFloorId) project.activeFloorId = project.floors[0].id;
+    syncRooms();
   }
 
   // Mutation mit Undo-Snapshot
   function commit(fn) { snapshot(); fn(); save(); emit("change"); }
-  function commitStructure(fn) { snapshot(); fn(); save(); emit("change"); emit("structure"); }
+  function commitStructure(fn) { snapshot(); fn(); syncRooms(); save(); emit("change"); emit("structure"); }
   // Live-Änderung ohne Snapshot (z.B. während Drag) – Snapshot vor dem Drag setzen
   function touch() { save(); emit("change"); }
 
   return {
     init, on, emit, get project() { return project; }, set project(p) { project = p; },
     activeFloor, snapshot, undo, redo, canUndo, canRedo, save, commit, commitStructure, touch, clone,
-    replaceProject(p) { undoStack = []; redoStack = []; project = p; if (!project.activeFloorId) project.activeFloorId = project.floors[0].id; save(); emit("change"); emit("structure"); },
+    replaceProject(p) { undoStack = []; redoStack = []; project = p; if (!project.activeFloorId) project.activeFloorId = project.floors[0].id; syncRooms(); save(); emit("change"); emit("structure"); },
   };
 })();
 

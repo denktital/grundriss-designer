@@ -37,6 +37,7 @@ GD.view2d = (function () {
     const Wd = wrap.clientWidth, Ht = wrap.clientHeight;
     svg.setAttribute("viewBox", `0 0 ${Wd} ${Ht}`);
     const floor = GD.state.activeFloor();
+    if (GD.rooms) GD.rooms.refresh(floor);
     const st = GD.state.project.settings;
 
     const elecMode = st.activeLayer === "electrical";
@@ -96,7 +97,7 @@ GD.view2d = (function () {
 
   function drawRoomFill(room) {
     const pts = room.poly.map(p => W2S(p.x, p.y).join(",")).join(" ");
-    el("polygon", { points: pts, class: "room-fill" + (isSel("room", room.id) ? " sel" : ""), fill: room.color && room.color !== "#ffffff" ? room.color : "" }, svg);
+    el("polygon", { points: pts, class: "room-fill" + (isSel("roomMarker", room.markerId) ? " sel" : ""), fill: room.color && room.color !== "#ffffff" ? room.color : "" }, svg);
   }
 
   function wallQuad(w) {
@@ -328,7 +329,9 @@ GD.view2d = (function () {
 
   function drawRoomBadge(room) {
     if (room.poly.length < 3) return;
-    const c = GD.geom.centroid(room.poly);
+    const floor = GD.state.activeFloor();
+    const mk = room.markerId && floor.roomMarkers.find(m => m.id === room.markerId);
+    const c = mk ? mk : GD.geom.centroid(room.poly);
     const [cx, cy] = W2S(c.x, c.y);
     const area = GD.geom.polygonArea(room.poly) / 10000; // m²
     const t1 = el("text", { x: cx, y: cy - 3, class: "room-name" }, svg); t1.textContent = room.name;
@@ -399,9 +402,9 @@ GD.view2d = (function () {
         const w = floor.walls.find(x => x.id === o.wallId); if (!w) continue;
         const [mx, my] = wallLocalToScreen(w, o.pos, 0);
         el("circle", { cx: mx, cy: my, r: 6, class: "sel-dot" }, svg);
-      } else if (s.kind === "room") {
-        const r = floor.rooms.find(x => x.id === s.id); if (!r) continue;
-        r.poly.forEach(p => { const [hx, hy] = W2S(p.x, p.y); el("rect", { x: hx - 4, y: hy - 4, width: 8, height: 8, class: "node-handle", "data-vert": 1, "data-id": r.id }, svg); });
+      } else if (s.kind === "roomMarker") {
+        const mk = floor.roomMarkers.find(x => x.id === s.id); if (!mk) continue;
+        const [hx, hy] = W2S(mk.x, mk.y); el("circle", { cx: hx, cy: hy, r: 18, class: "room-marker-sel" }, svg);
       } else if (s.kind === "dim" || s.kind === "label") {
         const o = (s.kind === "dim" ? floor.dims : floor.labels).find(x => x.id === s.id); if (!o) continue;
         const p = s.kind === "label" ? o : GD.geom.lerp(o.a, o.b, .5);
@@ -459,8 +462,14 @@ GD.view2d = (function () {
       const pr = GD.geom.projectOnSeg(wp, w.a, w.b);
       if (pr.dist < w.thickness / 2 + tolW) return { kind: "wall", id: w.id, obj: w, t: pr.t };
     }
-    // Räume
-    for (let i = floor.rooms.length - 1; i >= 0; i--) { if (GD.geom.pointInPoly(wp, floor.rooms[i].poly)) return { kind: "room", id: floor.rooms[i].id, obj: floor.rooms[i] }; }
+    // Räume → zugehörigen Stempel selektieren
+    for (let i = floor.rooms.length - 1; i >= 0; i--) {
+      const r = floor.rooms[i];
+      if (r.markerId && GD.geom.pointInPoly(wp, r.poly)) {
+        const mk = floor.roomMarkers.find(m => m.id === r.markerId);
+        if (mk) return { kind: "roomMarker", id: mk.id, obj: mk };
+      }
+    }
     return null;
   }
 

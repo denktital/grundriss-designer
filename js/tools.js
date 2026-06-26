@@ -47,7 +47,7 @@ GD.editor = (function () {
   function moveCoincident(fl, from, to) {
     const eq = (p) => GD.geom.dist(p, from) < 1.2;
     fl.walls.forEach(w => { if (eq(w.a)) { w.a.x = to.x; w.a.y = to.y; } if (eq(w.b)) { w.b.x = to.x; w.b.y = to.y; } });
-    fl.rooms.forEach(r => r.poly.forEach(p => { if (eq(p)) { p.x = to.x; p.y = to.y; } }));
+    // Räume werden aus den Wänden abgeleitet (GD.rooms.refresh im Render) – kein manuelles Mitziehen nötig.
   }
 
   /* ---------- Pointer ---------- */
@@ -57,7 +57,7 @@ GD.editor = (function () {
     if (evt.button !== 0) return;
 
     if (tool === "select") return downSelect(evt, px);
-    if (tool === "wall" || tool === "room" || tool === "wire") return downDraft(evt);
+    if (tool === "wall" || tool === "wire") return downDraft(evt);
     if (tool === "window" || tool === "door" || tool === "door-double" || tool === "door-slide") return placeOpening(evt);
     if (tool === "furniture") return placeItem(evt);
     if (tool === "elec") return placeElec(evt);
@@ -78,10 +78,6 @@ GD.editor = (function () {
       if (s.kind === "wall") {
         const w = fl.walls.find(x => x.id === s.id); if (!w) continue;
         for (const key of ["a", "b"]) if (dScreen(w[key], px) < 10) { beginDrag({ mode: "node", from: { x: w[key].x, y: w[key].y } }); return; }
-      }
-      if (s.kind === "room") {
-        const r = fl.rooms.find(x => x.id === s.id); if (!r) continue;
-        for (const p of r.poly) if (dScreen(p, px) < 10) { beginDrag({ mode: "node", from: { x: p.x, y: p.y } }); return; }
       }
     }
     // 2) Objekt unter Cursor
@@ -107,9 +103,8 @@ GD.editor = (function () {
   }
   function snapDelta(d) { const g = GD.state.project.settings.gridCm; return Math.round(d / g) * g; }
   function shiftObject(o, kind, orig, dx, dy) {
-    if (kind === "item" || kind === "label" || kind === "electrical") { o.x = orig.x + dx; o.y = orig.y + dy; }
+    if (kind === "item" || kind === "label" || kind === "electrical" || kind === "roomMarker") { o.x = orig.x + dx; o.y = orig.y + dy; }
     else if (kind === "wall" || kind === "dim") { o.a = { x: orig.a.x + dx, y: orig.a.y + dy }; o.b = { x: orig.b.x + dx, y: orig.b.y + dy }; }
-    else if (kind === "room") { o.poly = orig.poly.map(p => ({ x: p.x + dx, y: p.y + dy })); }
     else if (kind === "wire") { o.pts = orig.pts.map(p => ({ x: p.x + dx, y: p.y + dy })); }
   }
 
@@ -128,7 +123,7 @@ GD.editor = (function () {
     }
   }
   function findObj(fl, kind, id) {
-    return ({ wall: fl.walls, room: fl.rooms, opening: fl.openings, item: fl.furniture, dim: fl.dims, label: fl.labels, electrical: fl.electrical, wire: fl.wires }[kind] || []).find(o => o.id === id);
+    return ({ wall: fl.walls, room: fl.rooms, roomMarker: fl.roomMarkers, opening: fl.openings, item: fl.furniture, dim: fl.dims, label: fl.labels, electrical: fl.electrical, wire: fl.wires }[kind] || []).find(o => o.id === id);
   }
 
   function onMove(evt) {
@@ -139,7 +134,7 @@ GD.editor = (function () {
       performDrag(px);
       return;
     }
-    if (tool === "wall" || tool === "room") { snapW({ ref: draft && draft.pts.length ? draft.pts[draft.pts.length - 1] : null }); V().render(); return; }
+    if (tool === "wall") { snapW({ ref: draft && draft.pts.length ? draft.pts[draft.pts.length - 1] : null }); V().render(); return; }
     if (tool === "window" || tool === "door" || tool === "door-double" || tool === "door-slide" || tool === "furniture" || tool === "dim" || tool === "label") { snapPoint = (tool === "furniture") ? null : V().snap(mouseW); V().render(); }
   }
 
@@ -150,11 +145,10 @@ GD.editor = (function () {
       const o = findObj(fl, drag.kind, drag.id);
       if (drag.kind === "item" || drag.kind === "electrical") { const s = V().snap(mouseW); o.x = s.x; o.y = s.y; snapPoint = s; }
       else if (drag.kind === "opening") { const w = fl.walls.find(x => x.id === o.wallId); if (w) { const pr = GD.geom.projectOnSeg(mouseW, w.a, w.b); o.pos = Math.max(o.width / 2, Math.min(pr.t * GD.geom.dist(w.a, w.b), GD.geom.dist(w.a, w.b) - o.width / 2)); } }
-      else if (drag.kind === "label") { o.x = mouseW.x; o.y = mouseW.y; }
-      else { // wall/room/dim/wire: ganze Verschiebung
+      else if (drag.kind === "label" || drag.kind === "roomMarker") { o.x = mouseW.x; o.y = mouseW.y; }
+      else { // wall/dim/wire: ganze Verschiebung
         const dx = mouseW.x - drag.startW.x, dy = mouseW.y - drag.startW.y;
         if (drag.kind === "wall") { o.a = { x: drag.orig.a.x + dx, y: drag.orig.a.y + dy }; o.b = { x: drag.orig.b.x + dx, y: drag.orig.b.y + dy }; }
-        else if (drag.kind === "room") { o.poly = drag.orig.poly.map(p => ({ x: p.x + dx, y: p.y + dy })); }
         else if (drag.kind === "dim") { o.a = { x: drag.orig.a.x + dx, y: drag.orig.a.y + dy }; o.b = { x: drag.orig.b.x + dx, y: drag.orig.b.y + dy }; }
         else if (drag.kind === "wire") { o.pts = drag.orig.pts.map(p => ({ x: p.x + dx, y: p.y + dy })); }
       }
@@ -175,6 +169,8 @@ GD.editor = (function () {
     if (!drag) return;
     if (drag.mode === "pan") wrap.style.cursor = (tool === "select" ? "default" : "crosshair");
     if (drag.mode === "marquee") { finishMarquee(); }
+    // Nach struktureller Verschiebung Räume/Stempel neu ableiten + persistieren
+    if (drag.didSnap && drag.mode !== "marquee" && GD.rooms) { GD.rooms.sync(floor()); GD.state.save(); GD.state.emit("structure"); }
     try { wrap.releasePointerCapture(evt.pointerId); } catch (e) {}
     snapPoint = null; drag = null; V().render();
   }
@@ -197,7 +193,7 @@ GD.editor = (function () {
     } else {
       fl.furniture.forEach(i => { if (inside(i)) sel.push({ kind: "item", id: i.id }); });
       fl.walls.forEach(w => { if (inside(w.a) && inside(w.b)) sel.push({ kind: "wall", id: w.id }); });
-      fl.rooms.forEach(r => { if (r.poly.every(inside)) sel.push({ kind: "room", id: r.id }); });
+      fl.roomMarkers.forEach(mk => { if (inside(mk)) sel.push({ kind: "roomMarker", id: mk.id }); });
     }
     setSelection(sel);
   }
@@ -207,17 +203,14 @@ GD.editor = (function () {
     const s = snapW({ ref: draft && draft.pts.length ? draft.pts[draft.pts.length - 1] : null });
     const pt = { x: s.x, y: s.y };
     if (!draft) draft = { kind: tool, pts: [pt] };
-    else {
-      if (tool === "room" && draft.pts.length >= 2 && GD.geom.dist(pt, draft.pts[0]) < 20) return finishDraft();
-      draft.pts.push(pt);
-    }
+    else draft.pts.push(pt);
     self.preview = drawDraftPreview;
     V().render();
   }
   function drawDraftPreview(el, W2S, svgEl) {
     if (!draft) return;
     const pts = draft.pts.concat([snapPoint ? { x: snapPoint.x, y: snapPoint.y } : mouseW]);
-    const d = pts.map((p, i) => (i ? "L" : "M") + W2S(p.x, p.y).join(" ")).join(" ") + (tool === "room" ? " Z" : "");
+    const d = pts.map((p, i) => (i ? "L" : "M") + W2S(p.x, p.y).join(" ")).join(" ");
     el("path", { d, class: "draft-" + tool }, svgEl);
     pts.forEach(p => { const [x, y] = W2S(p.x, p.y); el("circle", { cx: x, cy: y, r: 3, class: "draft-node" }, svgEl); });
   }
@@ -226,13 +219,6 @@ GD.editor = (function () {
     const fl = floor();
     if (draft.kind === "wall" && draft.pts.length >= 2) {
       GD.state.commitStructure(() => { for (let i = 0; i < draft.pts.length - 1; i++) fl.walls.push(GD.make.wall(draft.pts[i], draft.pts[i + 1], GD.state.project.settings.wallThicknessCm || 18)); });
-    } else if (draft.kind === "room" && draft.pts.length >= 3) {
-      GD.state.commitStructure(() => {
-        const room = GD.make.room(draft.pts, "Raum");
-        fl.rooms.push(room);
-        for (let i = 0; i < draft.pts.length; i++) fl.walls.push(GD.make.wall(draft.pts[i], draft.pts[(i + 1) % draft.pts.length], 18));
-        selected = [{ kind: "room", id: room.id }];
-      });
     } else if (draft.kind === "wire" && draft.pts.length >= 2) {
       GD.state.commitStructure(() => { const w = GD.make.wire("power", draft.pts); fl.wires.push(w); selected = [{ kind: "wire", id: w.id }]; });
     }
@@ -291,12 +277,11 @@ GD.editor = (function () {
   /* ---------- Aktionen (vom Kontextmenü / Tastatur) ---------- */
   function nudgeSelection(dx, dy) {
     const fl = floor();
-    GD.state.commit(() => {
+    GD.state.commitStructure(() => {
       for (const s of selected) {
         const o = findObj(fl, s.kind, s.id); if (!o) continue;
-        if (s.kind === "item" || s.kind === "label" || s.kind === "electrical") { o.x += dx; o.y += dy; }
+        if (s.kind === "item" || s.kind === "label" || s.kind === "electrical" || s.kind === "roomMarker") { o.x += dx; o.y += dy; }
         else if (s.kind === "wall" || s.kind === "dim") { o.a.x += dx; o.a.y += dy; o.b.x += dx; o.b.y += dy; }
-        else if (s.kind === "room") { o.poly.forEach(p => { p.x += dx; p.y += dy; }); }
         else if (s.kind === "wire") { o.pts.forEach(p => { p.x += dx; p.y += dy; }); }
         else if (s.kind === "opening") { const w = fl.walls.find(x => x.id === o.wallId); if (w) { const len = GD.geom.dist(w.a, w.b); o.pos = Math.max(o.width / 2, Math.min(o.pos + (dx || dy), len - o.width / 2)); } }
       }
@@ -311,7 +296,7 @@ GD.editor = (function () {
     GD.state.commitStructure(() => {
       for (const s of selected) {
         if (s.kind === "wall") { fl.walls = fl.walls.filter(w => w.id !== s.id); fl.openings = fl.openings.filter(o => o.wallId !== s.id); }
-        else if (s.kind === "room") fl.rooms = fl.rooms.filter(r => r.id !== s.id);
+        else if (s.kind === "roomMarker") fl.roomMarkers = fl.roomMarkers.filter(m => m.id !== s.id);
         else if (s.kind === "opening") fl.openings = fl.openings.filter(o => o.id !== s.id);
         else if (s.kind === "item") fl.furniture = fl.furniture.filter(i => i.id !== s.id);
         else if (s.kind === "dim") fl.dims = fl.dims.filter(d => d.id !== s.id);
@@ -329,7 +314,6 @@ GD.editor = (function () {
       for (const s of selected) {
         if (s.kind === "item") { const o = GD.state.clone(fl.furniture.find(i => i.id === s.id)); o.id = GD.uid("item"); o.x += 30; o.y += 30; fl.furniture.push(o); nu.push({ kind: "item", id: o.id }); }
         else if (s.kind === "electrical") { const o = GD.state.clone(fl.electrical.find(i => i.id === s.id)); o.id = GD.uid("elec"); o.x += 30; o.y += 30; fl.electrical.push(o); nu.push({ kind: "electrical", id: o.id }); }
-        else if (s.kind === "room") { const o = GD.state.clone(fl.rooms.find(i => i.id === s.id)); o.id = GD.uid("room"); o.poly = o.poly.map(p => ({ x: p.x + 30, y: p.y + 30 })); fl.rooms.push(o); nu.push({ kind: "room", id: o.id }); }
         else if (s.kind === "wall") { const o = GD.state.clone(fl.walls.find(i => i.id === s.id)); o.id = GD.uid("wall"); o.a.x += 30; o.a.y += 30; o.b.x += 30; o.b.y += 30; fl.walls.push(o); nu.push({ kind: "wall", id: o.id }); }
       }
       if (nu.length) selected = nu;
@@ -381,7 +365,7 @@ GD.editor = (function () {
     // Werkzeug-Kürzel (ebenen-abhängig)
     const map = GD.state.project.settings.activeLayer === "electrical"
       ? { v: "select", w: "wire" }
-      : { v: "select", w: "wall", p: "room", t: "door", f: "window", m: "dim", x: "label" };
+      : { v: "select", w: "wall", t: "door", f: "window", m: "dim", x: "label" };
     if (map[e.key] && !e.ctrlKey && !e.metaKey) setTool(map[e.key]);
   }
 

@@ -47,7 +47,6 @@ GD.ui = (function () {
   const TOOLS = [
     { t: "select", ic: "select", name: "Auswahl (V)" },
     { t: "wall", ic: "wall", name: "Wand (W)" },
-    { t: "room", ic: "room", name: "Raum (P)" },
     { t: "door", ic: "door", name: "Tür (T)" },
     { t: "window", ic: "window", name: "Fenster (F)" },
     { t: "dim", ic: "dim", name: "Bemaßung (M)" },
@@ -157,13 +156,15 @@ GD.ui = (function () {
     }
     const s = sel[0]; const o = GD.editor.findObj(fl, s.kind, s.id); if (!o) return buildFloorProps(box, fl);
     const commit = (fn) => { GD.state.commit(fn); GD.view2d.render(); };
-    if (s.kind === "room") {
+    if (s.kind === "roomMarker") {
       box.appendChild(h("h3", {}, ["Raum"]));
-      box.appendChild(field("Name", txt(o.name, v => commit(() => o.name = v))));
-      box.appendChild(field("Deckenhöhe (m)", num(m(o.ceiling), v => commit(() => o.ceiling = v * 100))));
-      const cp = h("input", { type: "color", value: o.color && o.color[0] === "#" ? o.color : "#ffffff" }); cp.addEventListener("input", () => commit(() => o.color = cp.value));
+      box.appendChild(field("Name", txt(o.name, v => commit(() => { o.name = v; o.auto = false; }))));
+      box.appendChild(field("Deckenhöhe (m)", num(m(o.ceiling), v => commit(() => { o.ceiling = v * 100; o.auto = false; }))));
+      const cp = h("input", { type: "color", value: o.color && o.color[0] === "#" ? o.color : "#ffffff" }); cp.addEventListener("input", () => commit(() => { o.color = cp.value; o.auto = false; }));
       box.appendChild(field("Bodenfarbe", cp));
-      box.appendChild(h("p", { class: "ro" }, ["Fläche: " + (GD.geom.polygonArea(o.poly) / 10000).toFixed(2) + " m²  ·  Umfang: " + (GD.geom.polygonPerimeter(o.poly) / 100).toFixed(2) + " m"]));
+      const rm = fl.rooms.find(r => r.markerId === o.id);
+      if (rm) box.appendChild(h("p", { class: "ro" }, ["Fläche: " + (GD.geom.polygonArea(rm.poly) / 10000).toFixed(2) + " m²  ·  Umfang: " + (GD.geom.polygonPerimeter(rm.poly) / 100).toFixed(2) + " m"]));
+      box.appendChild(h("p", { class: "hint-sm" }, ["Räume entstehen automatisch aus den Wänden. Ziehe Wände/Ecken, um die Form zu ändern; der Stempel ist verschiebbar."]));
     } else if (s.kind === "wall") {
       box.appendChild(h("h3", {}, ["Wand"]));
       box.appendChild(field("Wandstärke (cm)", num(o.thickness, v => commit(() => o.thickness = v), "1")));
