@@ -36,10 +36,19 @@ GD.io = (function () {
     .roof-hint{fill:none;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:9 6;opacity:.55}
     .roof-ridge{stroke:var(--accent);stroke-width:1.4;stroke-dasharray:4 4;opacity:.8}
     .roof-label{fill:var(--accent);font-size:11px;font-weight:600;text-anchor:middle;opacity:.85}
+    .elec-mode .room-fill,.elec-mode .wall,.elec-mode .item,.elec-mode .win-open,.elec-mode .win-frame,.elec-mode .win-glass,.elec-mode .win-sash,.elec-mode .win-sash-arc,.elec-mode .door-leaf,.elec-mode .door-arc{opacity:.28}
+    .esym{stroke:var(--sym-stroke);fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
+    .esym-fill{fill:var(--sym-stroke);stroke:none}
+    .elec-label{fill:var(--txt-dim);font-size:11px;text-anchor:middle}
+    .elec-wire{fill:none;stroke-width:1.4;vector-effect:non-scaling-stroke}
+    .elec-wire.power{stroke:#e0823a}.elec-wire.light{stroke:#3aa0e0;stroke-dasharray:6 4}
+    .elec-legend-bg{fill:var(--panel);stroke:var(--border);opacity:.94}
+    .elec-legend-title{fill:var(--txt);font-size:12px;font-weight:600}
+    .elec-legend-txt{fill:var(--txt-soft);font-size:11px}
   `;
   // entfernt nur temporäre UI-Overlays (Auswahl/Fang/Hilfslinien) – Raster bleibt wie am Schirm
-  const STRIP = ["node-handle", "rot-handle", "sel-box", "snap-ind", "marquee", "draft-wall", "draft-room", "draft-node", "sel-dot", "edge-hit", "win-hit", "wall-add-hit", "handle"];
-  const THEME_VARS = ["--canvas-bg", "--grid", "--grid-strong", "--wall-fill", "--room-fill", "--line", "--accent", "--txt", "--txt-dim", "--txt-soft", "--sym-stroke", "--dim"];
+  const STRIP = ["node-handle", "rot-handle", "sel-box", "snap-ind", "marquee", "draft-wall", "draft-room", "draft-wire", "draft-node", "sel-dot", "edge-hit", "win-hit", "wall-add-hit", "handle"];
+  const THEME_VARS = ["--canvas-bg", "--grid", "--grid-strong", "--wall-fill", "--room-fill", "--line", "--accent", "--txt", "--txt-dim", "--txt-soft", "--sym-stroke", "--dim", "--panel", "--border"];
   function themeVarStyle() { const cs = getComputedStyle(document.documentElement); return THEME_VARS.map(n => n + ":" + cs.getPropertyValue(n).trim()).join(";"); }
   function canvasBg() { return getComputedStyle(document.documentElement).getPropertyValue("--canvas-bg").trim() || "#ffffff"; }
   function hexToRgb(hex) { hex = (hex || "").trim().replace("#", ""); if (hex.length === 3) hex = hex.split("").map(c => c + c).join(""); const n = parseInt(hex, 16); return isNaN(n) ? [255, 255, 255] : [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }

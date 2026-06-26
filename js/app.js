@@ -37,6 +37,8 @@ GD.ui = (function () {
     dim: svgIc('<path d="M3 12h18"/><path d="M6 9l-3 3 3 3M18 9l3 3-3 3"/><path d="M3 7v10M21 7v10" stroke-width="1.1"/>'),
     label: svgIc('<path d="M5 6.5h14M12 6.5V19M9 19h6"/>'),
     furniture: svgIc('<path d="M4 11.5V8a2 2 0 012-2h12a2 2 0 012 2v3.5"/><path d="M3.5 11.5A1.8 1.8 0 015 13.3V16h14v-2.7a1.8 1.8 0 011.5-1.8"/><path d="M6 19v-3M18 19v-3"/>'),
+    wire: svgIc('<path d="M3 12h4l3-6 4 12 3-6h4"/>'),
+    elec: svgIc('<path d="M13 3L4 14h7l-1 7 9-11h-7z"/>', true),
     expand: svgIc('<path d="M9 6l6 6-6 6"/>'),
     collapse: svgIc('<path d="M15 6l-6 6 6 6"/>'),
   };
@@ -51,6 +53,10 @@ GD.ui = (function () {
     { t: "dim", ic: "dim", name: "Bemaßung (M)" },
     { t: "label", ic: "label", name: "Text (X)" },
   ];
+  const ELEC_TOOLS = [
+    { t: "select", ic: "select", name: "Auswahl (V)" },
+    { t: "wire", ic: "wire", name: "Leitung (W)" },
+  ];
   function mkToolBtn(icKey, name, tool, onclick) {
     const short = name.replace(/\s*\(.*\)$/, "");
     return h("button", { class: "tool-btn", "data-tool": tool || "", onclick }, [
@@ -61,9 +67,10 @@ GD.ui = (function () {
   }
   function buildToolbar() {
     const bar = $("#toolbar"); bar.innerHTML = "";
-    TOOLS.forEach(tl => bar.appendChild(mkToolBtn(tl.ic, tl.name, tl.t, () => GD.editor.setTool(tl.t))));
+    const elec = GD.state.project.settings.activeLayer === "electrical";
+    (elec ? ELEC_TOOLS : TOOLS).forEach(tl => bar.appendChild(mkToolBtn(tl.ic, tl.name, tl.t, () => GD.editor.setTool(tl.t))));
     bar.appendChild(h("div", { class: "tool-sep" }));
-    bar.appendChild(mkToolBtn("furniture", "Möbel & Symbole", "", () => openTab("lib")));
+    bar.appendChild(mkToolBtn(elec ? "elec" : "furniture", elec ? "Elektro-Symbole" : "Möbel & Symbole", "", () => openTab("lib")));
     bar.appendChild(h("div", { class: "tool-spacer" }));
     const exp = mkToolBtn("expand", "Beschriftung", "", toggleToolbarLabels); exp.classList.add("tool-expand");
     bar.appendChild(exp);
@@ -113,16 +120,19 @@ GD.ui = (function () {
   }
   function renderLibList() {
     const list = $("#libList"); if (!list) return; list.innerHTML = "";
+    const elec = GD.state.project.settings.activeLayer === "electrical";
+    const LIB = elec ? GD.elec : GD.library;
+    const placeTool = elec ? "elec" : "furniture";
     let total = 0;
-    GD.library.cats.forEach(cat => {
-      const items = GD.library.byCat(cat).filter(s => !libQuery || s.name.toLowerCase().includes(libQuery));
+    LIB.cats.forEach(cat => {
+      const items = LIB.byCat(cat).filter(s => !libQuery || s.name.toLowerCase().includes(libQuery));
       if (!items.length) return; total += items.length;
       list.appendChild(h("div", { class: "lib-cat" }, [cat]));
       const grid = h("div", { class: "lib-grid" });
       items.forEach(sym => {
-        const pad = 16, vb = `${-sym.w / 2 - pad} ${-sym.h / 2 - pad} ${sym.w + pad * 2} ${sym.h + pad * 2}`;
-        const cell = h("button", { class: "lib-item" + (GD.editor.pendingType === sym.type ? " active" : ""), title: sym.name, onclick: () => { GD.editor.setTool("furniture", sym.type); renderLibList(); toast("Platzieren: " + sym.name); } });
-        cell.innerHTML = `<svg viewBox="${vb}" class="lib-svg">${GD.library.markup(sym.type, sym.w, sym.h)}</svg><span>${sym.name}</span>`;
+        const pad = elec ? 10 : 16, vb = `${-sym.w / 2 - pad} ${-sym.h / 2 - pad} ${sym.w + pad * 2} ${sym.h + pad * 2}`;
+        const cell = h("button", { class: "lib-item" + (GD.editor.pendingType === sym.type ? " active" : ""), title: sym.name, onclick: () => { GD.editor.setTool(placeTool, sym.type); renderLibList(); toast("Platzieren: " + sym.name); } });
+        cell.innerHTML = `<svg viewBox="${vb}" class="lib-svg${elec ? " elec" : ""}">${LIB.markup(sym.type, sym.w, sym.h)}</svg><span>${sym.name}</span>`;
         grid.appendChild(cell);
       });
       list.appendChild(grid);
@@ -202,11 +212,69 @@ GD.ui = (function () {
       box.appendChild(field("Text", txt(o.text, v => commit(() => o.text = v))));
       box.appendChild(field("Größe", num(o.size, v => commit(() => o.size = v), "1")));
       box.appendChild(field("Drehung (°)", num(o.rot, v => commit(() => o.rot = v), "15")));
+    } else if (s.kind === "electrical") {
+      box.appendChild(h("h3", {}, [GD.elec.def(o.type).name]));
+      const se = h("select");
+      GD.elec.list().forEach(sym => { const op = h("option", { value: sym.type }, [sym.name]); if (o.type === sym.type) op.selected = true; se.appendChild(op); });
+      se.addEventListener("change", () => commit(() => { o.type = se.value; const d = GD.elec.def(o.type); o.w = d.w; o.h = d.h; }));
+      box.appendChild(field("Typ", se));
+      box.appendChild(field("Drehung (°)", num(o.rot, v => commit(() => o.rot = ((v % 360) + 360) % 360), "15")));
+      box.appendChild(field("Stromkreis", txt(o.circuit, v => commit(() => o.circuit = v || null))));
+      box.appendChild(field("Beschriftung", txt(o.label, v => commit(() => o.label = v))));
+    } else if (s.kind === "wire") {
+      box.appendChild(h("h3", {}, ["Leitung"]));
+      const sw = h("select");
+      [["power", "Stromkreis (Steckdose)"], ["light", "Lichtkreis"]].forEach(([v, n]) => { const op = h("option", { value: v }, [n]); if ((o.kind || "power") === v) op.selected = true; sw.appendChild(op); });
+      sw.addEventListener("change", () => commit(() => o.kind = sw.value));
+      box.appendChild(field("Leitungstyp", sw));
+      let len = 0; for (let i = 0; i < o.pts.length - 1; i++) len += GD.geom.dist(o.pts[i], o.pts[i + 1]);
+      box.appendChild(h("p", { class: "ro" }, ["Länge: " + m(len) + " m"]));
     }
     box.appendChild(h("button", { class: "btn block danger", onclick: () => GD.editor.deleteSelection() }, ["Löschen (Entf)"]));
   }
 
+  function genElec() {
+    const fl = GD.state.activeFloor();
+    const has = (fl.electrical && fl.electrical.length) || (fl.wires && fl.wires.length);
+    if (has && !confirm("Vorhandenen Elektroplan dieses Geschosses durch einen neuen Vorschlag ersetzen?")) return;
+    GD.state.commitStructure(() => GD.elec.generate(fl, GD.state.project.settings.elecLevel));
+    GD.view2d.render(); buildProps();
+    toast("Elektroplan erzeugt – als Vorschlag verstehen und prüfen");
+  }
+  function clearElec() {
+    const fl = GD.state.activeFloor();
+    if (!((fl.electrical && fl.electrical.length) || (fl.wires && fl.wires.length))) return;
+    if (!confirm("Elektroplan dieses Geschosses vollständig leeren?")) return;
+    GD.state.commitStructure(() => { fl.electrical = []; fl.wires = []; });
+    GD.view2d.render(); buildProps();
+  }
+  function buildElecProps(box, fl) {
+    const st = GD.state.project.settings;
+    box.appendChild(h("h3", {}, ["Elektroplan"]));
+    const lv = h("select");
+    [["min", "Mindestausstattung"], ["standard", "Standard"], ["comfort", "Komfort"]].forEach(([v, n]) => { const op = h("option", { value: v }, [n]); if ((st.elecLevel || "standard") === v) op.selected = true; lv.appendChild(op); });
+    lv.addEventListener("change", () => { st.elecLevel = lv.value; GD.state.save(); });
+    box.appendChild(field("Ausstattungsgrad (RAL-RG 678)", lv));
+    box.appendChild(h("button", { class: "btn block primary", onclick: genElec }, ["Elektroplan vorschlagen"]));
+    box.appendChild(h("p", { class: "hint-sm" }, ["Automatischer Vorschlag aus der Raumaufteilung – Geräte und Leitungen sind danach frei editierbar."]));
+    const lg = h("input", { type: "checkbox" }); lg.checked = st.showLegend !== false;
+    lg.addEventListener("change", () => { GD.state.commit(() => st.showLegend = lg.checked); GD.view2d.render(); });
+    box.appendChild(field("Legende einblenden", lg));
+    // Stückliste
+    const t = GD.elec.tally(fl);
+    box.appendChild(h("h3", { class: "mt" }, ["Stückliste"]));
+    if (!t.rows.length) box.appendChild(h("p", { class: "hint-sm" }, ["Noch keine Elektro-Objekte auf diesem Geschoss."]));
+    else {
+      const tbl = h("table", { class: "elec-tally" });
+      t.rows.forEach(r => tbl.appendChild(h("tr", {}, [h("td", {}, [r.name]), h("td", { class: "num" }, [String(r.count)])])));
+      tbl.appendChild(h("tr", { class: "sum" }, [h("td", {}, ["Leitungen (vereinfacht)"]), h("td", { class: "num" }, [m(t.wireLen) + " m"])]));
+      box.appendChild(tbl);
+      box.appendChild(h("button", { class: "btn block danger mt", onclick: clearElec }, ["Elektroplan leeren"]));
+    }
+  }
+
   function buildFloorProps(box, fl) {
+    if (GD.state.project.settings.activeLayer === "electrical") return buildElecProps(box, fl);
     box.appendChild(h("h3", {}, ["Projekt"]));
     box.appendChild(field("Projektname", txt(GD.state.project.name, v => { GD.state.project.name = v; GD.state.save(); })));
     box.appendChild(h("h3", { class: "mt" }, ["Aktuelles Geschoss"]));
@@ -371,7 +439,18 @@ GD.ui = (function () {
     $("#tab2d").classList.toggle("active", !threeD); $("#tab3d").classList.toggle("active", threeD);
     $("#toolbar").style.display = threeD ? "none" : "flex";
     $("#d3controls").style.display = threeD ? "flex" : "none";
+    $("#layerTabs").style.display = threeD ? "none" : "flex";
     if (threeD) { GD.view3d.init($("#view3d")); GD.view3d.show(); } else { GD.view3d.hide(); GD.view2d.render(); }
+  }
+
+  function setLayer(layer) {
+    const st = GD.state.project.settings;
+    if (st.activeLayer === layer) return;
+    st.activeLayer = layer; GD.state.save();
+    GD.editor.setTool("select");
+    $("#layerArch").classList.toggle("active", layer === "architecture");
+    $("#layerElec").classList.toggle("active", layer === "electrical");
+    buildToolbar(); buildProps(); renderLibList(); GD.view2d.render();
   }
 
   /* ---------- Design-Themes ---------- */
@@ -452,6 +531,8 @@ GD.ui = (function () {
     buildMenubar(); buildToolbar(); buildSettingsBar();
     $("#tab2d").onclick = () => setView(false);
     $("#tab3d").onclick = () => setView(true);
+    $("#layerArch").onclick = () => setLayer("architecture");
+    $("#layerElec").onclick = () => setLayer("electrical");
     $("#undoBtn").onclick = () => GD.state.undo(); $("#redoBtn").onclick = () => GD.state.redo();
     $("#d3mode").onchange = (e) => GD.view3d.setMode(e.target.value);
     $("#d3rebuild").onclick = () => GD.view3d.build();
@@ -466,6 +547,9 @@ GD.ui = (function () {
     GD.state.on("edit-selected", () => { openTab("props"); });
 
     applyTheme(); buildFloors(); buildLibrary(); openTab("props");
+    const al = GD.state.project.settings.activeLayer || "architecture";
+    $("#layerArch").classList.toggle("active", al === "architecture");
+    $("#layerElec").classList.toggle("active", al === "electrical");
     GD.view2d.fit(); updateStatus();
     $("#canvasWrap").addEventListener("wheel", (e) => { e.preventDefault(); const px = GD.view2d.svgPoint(e); GD.view2d.zoomAt(px[0], px[1], e.deltaY < 0 ? 1.1 : 1 / 1.1); }, { passive: false });
     window.addEventListener("resize", () => { GD.view2d.render(); if (mode3d) GD.view3d.onResize(); });

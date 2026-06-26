@@ -39,18 +39,27 @@ GD.view2d = (function () {
     const floor = GD.state.activeFloor();
     const st = GD.state.project.settings;
 
+    const elecMode = st.activeLayer === "electrical";
+    svg.classList.toggle("elec-mode", elecMode);
+
     if (st.showGrid) drawGrid(Wd, Ht);
-    if (st.showGhost) drawGhost(floor);
+    if (st.showGhost && !elecMode) drawGhost(floor);
     drawUnderlay(floor);
     floor.rooms.forEach(r => drawRoomFill(r));
     floor.walls.forEach(w => drawWall(floor, w));
     floor.openings.forEach(o => drawOpening(floor, o));
     floor.furniture.forEach(it => drawItem(it));
-    if (st.showDims) { drawAutoDims(floor); floor.dims.forEach(d => drawDim(d)); }
+    if (st.showDims && !elecMode) { drawAutoDims(floor); floor.dims.forEach(d => drawDim(d)); }
     floor.labels.forEach(l => drawLabel(l));
     floor.rooms.forEach(r => drawRoomBadge(r));
     drawRoofHint(floor);
-    if (st.showGhost) drawOriginMarker();
+    if (st.showGhost && !elecMode) drawOriginMarker();
+
+    if (elecMode) {
+      (floor.wires || []).forEach(w => drawWire(w));
+      (floor.electrical || []).forEach(e => drawElec(e));
+      if (st.showLegend !== false) drawElecLegend(floor, Wd, Ht);
+    }
 
     drawSelection(floor);
     if (ed().preview) ed().preview(el, W2S, svg);
@@ -212,6 +221,33 @@ GD.view2d = (function () {
     const g = el("g", { transform: `translate(${sx} ${sy}) rotate(${it.rot}) scale(${view.scale})`, class: "item" + (isSel("item", it.id) ? " sel" : "") }, svg);
     g.innerHTML = GD.library.markup(it.type, it.w, it.h);
     if (it.label) { const t = el("text", { x: 0, y: it.h / 2 + 14, class: "item-label" }, g); t.textContent = it.label; }
+  }
+
+  /* ---------- Elektro-Schicht ---------- */
+  function drawWire(w) {
+    if (!w.pts || w.pts.length < 2) return;
+    const d = w.pts.map((p, i) => (i ? "L" : "M") + W2S(p.x, p.y).join(" ")).join(" ");
+    el("path", { d, class: "elec-wire " + (w.kind || "power") + (isSel("wire", w.id) ? " sel" : "") }, svg);
+  }
+  function drawElec(e) {
+    const [sx, sy] = W2S(e.x, e.y);
+    const s = Math.max(view.scale, 0.5);                       // Symbole nicht zu klein
+    const g = el("g", { transform: `translate(${sx} ${sy}) rotate(${e.rot}) scale(${s})`, class: "elec" + (isSel("electrical", e.id) ? " sel" : "") }, svg);
+    g.innerHTML = GD.elec.markup(e.type);
+    if (e.label) { const t = el("text", { x: 0, y: 22, class: "elec-label" }, g); t.textContent = e.label; }
+  }
+  function drawElecLegend(floor, Wd, Ht) {
+    const used = []; (floor.electrical || []).forEach(e => { if (used.indexOf(e.type) < 0) used.push(e.type); });
+    if (!used.length) return;
+    const pad = 11, rowH = 22, w = 200, h = used.length * rowH + pad * 2 + 14, x0 = 14, y0 = Ht - h - 14;
+    el("rect", { x: x0, y: y0, width: w, height: h, rx: 6, class: "elec-legend-bg" }, svg);
+    const ti = el("text", { x: x0 + pad, y: y0 + pad + 9, class: "elec-legend-title" }, svg); ti.textContent = "Legende";
+    used.forEach((t, i) => {
+      const cy = y0 + pad + 24 + i * rowH;
+      const g = el("g", { transform: `translate(${x0 + pad + 9} ${cy}) scale(0.5)`, class: "elec" }, svg);
+      g.innerHTML = GD.elec.markup(t);
+      const tx = el("text", { x: x0 + pad + 28, y: cy + 4, class: "elec-legend-txt" }, svg); tx.textContent = GD.elec.def(t).name;
+    });
   }
 
   function drawDim(d) {
@@ -380,9 +416,21 @@ GD.view2d = (function () {
   }
 
   /* ---------- Hit-Testing ---------- */
+  function hitTestElec(floor, wp, tolW) {
+    for (let i = floor.electrical.length - 1; i >= 0; i--) {
+      const e = floor.electrical[i], a = -e.rot * Math.PI / 180, dx = wp.x - e.x, dy = wp.y - e.y;
+      const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+      if (Math.abs(lx) <= e.w / 2 + 4 && Math.abs(ly) <= e.h / 2 + 4) return { kind: "electrical", id: e.id, obj: e };
+    }
+    for (const w of floor.wires) for (let i = 0; i < w.pts.length - 1; i++) {
+      if (GD.geom.projectOnSeg(wp, w.pts[i], w.pts[i + 1]).dist < tolW * 1.4) return { kind: "wire", id: w.id, obj: w };
+    }
+    return null;
+  }
   function hitTest(wp) {
     const floor = GD.state.activeFloor();
     const tolW = 8 / view.scale;
+    if (GD.state.project.settings.activeLayer === "electrical") return hitTestElec(floor, wp, tolW);
     // Möbel (bbox in lokalen Koords, rotiert)
     for (let i = floor.furniture.length - 1; i >= 0; i--) {
       const it = floor.furniture[i];

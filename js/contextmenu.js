@@ -42,6 +42,11 @@ GD.contextmenu = (function () {
     } else if (kind === "wall") {
       items.push({ label: "Wandstärke…", ic: "▭", act: () => wallThickness() });
       items.push({ label: "Duplizieren", ic: "⧉", act: () => E.duplicateSelection() });
+    } else if (kind === "electrical") {
+      items.push({ label: "90° drehen", ic: "⟳", act: () => E.rotateSelection(90) });
+      items.push({ label: "Duplizieren", ic: "⧉", sc: "Strg+D", act: () => E.duplicateSelection() });
+    } else if (kind === "wire") {
+      items.push({ label: "Leitung umtypen", ic: "⇋", act: () => { const fl2 = GD.state.activeFloor(); GD.state.commit(() => sel.forEach(s => { if (s.kind === "wire") { const w = fl2.wires.find(x => x.id === s.id); if (w) w.kind = w.kind === "light" ? "power" : "light"; } })); GD.view2d.render(); } });
     }
     if (kind) {
       items.push({ sep: 1 });
@@ -99,9 +104,14 @@ GD.contextmenu = (function () {
   }
   function selectAll() {
     const fl = GD.state.activeFloor(); const sel = [];
-    fl.rooms.forEach(r => sel.push({ kind: "room", id: r.id }));
-    fl.walls.forEach(w => sel.push({ kind: "wall", id: w.id }));
-    fl.furniture.forEach(i => sel.push({ kind: "item", id: i.id }));
+    if (GD.state.project.settings.activeLayer === "electrical") {
+      fl.electrical.forEach(e => sel.push({ kind: "electrical", id: e.id }));
+      fl.wires.forEach(w => sel.push({ kind: "wire", id: w.id }));
+    } else {
+      fl.rooms.forEach(r => sel.push({ kind: "room", id: r.id }));
+      fl.walls.forEach(w => sel.push({ kind: "wall", id: w.id }));
+      fl.furniture.forEach(i => sel.push({ kind: "item", id: i.id }));
+    }
     GD.editor.setSelection(sel);
   }
 

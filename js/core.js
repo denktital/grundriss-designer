@@ -129,13 +129,14 @@ GD.make = {
       name: "Mein Grundriss",
       floors: [],
       activeFloorId: null,
-      settings: { gridCm: 25, snapCm: 15, theme: "dark", accent: "#4f8cff", showGrid: true, showDims: true, ortho: true, showGhost: false },
+      settings: { gridCm: 25, snapCm: 15, theme: "dark", accent: "#4f8cff", showGrid: true, showDims: true, ortho: true, showGhost: false, activeLayer: "architecture", elecLevel: "standard", showLegend: true },
     };
   },
   floor(name) {
     return {
       id: GD.uid("floor"), name: name || "Geschoss", elevation: 0, wallHeight: 260,
       walls: [], rooms: [], openings: [], furniture: [], dims: [], labels: [],
+      electrical: [], wires: [],
       roof: { enabled: false, type: "gable", height: 200, overhang: 35, ridge: "auto", color: "#9a4a3a" },
       underlay: { src: "", x: 0, y: 0, scale: 1, rotation: 0, opacity: 0.5, visible: false },
     };
@@ -154,6 +155,8 @@ GD.make = {
     };
   },
   item(type, x, y) { const d = GD.library.def(type); return { id: GD.uid("item"), type, x, y, rot: 0, w: d.w, h: d.h, hh: d.z != null ? d.z : 50, label: "" }; },
+  elec(type, x, y) { const d = GD.elec.def(type); return { id: GD.uid("elec"), type, x, y, rot: 0, w: d.w, h: d.h, circuit: null, label: "" }; },
+  wire(kind, pts) { return { id: GD.uid("wire"), kind: kind || "power", pts: (pts || []).map(p => ({ x: p.x, y: p.y })) }; },
   dim(a, b) { return { id: GD.uid("dim"), a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, offset: 40 }; },
   label(x, y, text) { return { id: GD.uid("lbl"), x, y, text: text || "Text", size: 16, rot: 0 }; },
 };
