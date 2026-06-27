@@ -119,7 +119,22 @@ GD.templates = (function () {
     },
   };
 
+  // Standard-Vorlage (fest eingebettet in js/default-template.js)
+  function buildDefaultProject() {
+    if (GD.DEFAULT_PROJECT) return JSON.parse(JSON.stringify(GD.DEFAULT_PROJECT));
+    return buildLegacyProject();
+  }
+
+  // Einzelnes Geschoss aus der Vorlage (für „Geschoss aus Vorlage zurücksetzen")
   function buildFloor(key) {
+    if (GD.DEFAULT_PROJECT) {
+      const f = GD.DEFAULT_PROJECT.floors.find(fl => fl.templateKey === key);
+      if (f) return JSON.parse(JSON.stringify(f));
+    }
+    return buildLegacyFloor(key);
+  }
+
+  function buildLegacyFloor(key) {
     const d = DATA[key];
     const f = GD.make.floor(d.name);
     f.elevation = d.elevation; f.wallHeight = d.wallHeight; f.templateKey = key;
@@ -131,9 +146,9 @@ GD.templates = (function () {
     return f;
   }
 
-  function buildDefaultProject() {
+  function buildLegacyProject() {
     const p = GD.make.project();
-    p.floors = [buildFloor("EG"), buildFloor("OG")];
+    p.floors = [buildLegacyFloor("EG"), buildLegacyFloor("OG")];
     p.activeFloorId = p.floors[0].id;
     return p;
   }

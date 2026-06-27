@@ -195,9 +195,25 @@ GD.state = (function () {
 
   function syncRooms() { if (GD.rooms && project) project.floors.forEach(f => GD.rooms.sync(f)); }
 
+  // Geladene/Vorlage-Projekte robust machen: fehlende Arrays/Settings ergänzen
+  function normalize(p) {
+    if (!p || !p.floors) return p;
+    const proto = GD.make.floor();
+    p.floors.forEach(f => {
+      ["walls", "rooms", "roomMarkers", "openings", "furniture", "dims", "labels", "electrical", "wires"].forEach(k => { if (!Array.isArray(f[k])) f[k] = []; });
+      if (!f.roof) f.roof = clone(proto.roof);
+      if (!f.underlay) f.underlay = clone(proto.underlay);
+    });
+    const sd = GD.make.project().settings;
+    p.settings = p.settings || {};
+    for (const k in sd) if (p.settings[k] === undefined) p.settings[k] = sd[k];
+    return p;
+  }
+
   function init() {
     project = load();
     if (!project) { project = GD.templates.buildDefaultProject(); }
+    normalize(project);
     if (!project.activeFloorId) project.activeFloorId = project.floors[0].id;
     syncRooms();
   }
@@ -211,7 +227,7 @@ GD.state = (function () {
   return {
     init, on, emit, get project() { return project; }, set project(p) { project = p; },
     activeFloor, snapshot, undo, redo, canUndo, canRedo, save, commit, commitStructure, touch, clone,
-    replaceProject(p) { undoStack = []; redoStack = []; project = p; if (!project.activeFloorId) project.activeFloorId = project.floors[0].id; syncRooms(); save(); emit("change"); emit("structure"); },
+    replaceProject(p) { undoStack = []; redoStack = []; project = p; normalize(project); if (!project.activeFloorId) project.activeFloorId = project.floors[0].id; syncRooms(); save(); emit("change"); emit("structure"); },
   };
 })();
 
