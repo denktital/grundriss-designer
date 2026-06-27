@@ -268,8 +268,15 @@ GD.io = (function () {
         if (idx.every(n => n >= 0 && n < 1e9)) faces.push(idx);
       }
     }
-    if (verts.length < 3 || !faces.length) { alert("Keine verwertbare OBJ-Geometrie gefunden."); return; }
-    const G = GD.geom, segs = [];
+    if (verts.length < 3) { alert("Keine verwertbare OBJ-Geometrie gefunden."); return; }
+    let yMin = Infinity, yMax = -Infinity;
+    verts.forEach(v => { if (v.y < yMin) yMin = v.y; if (v.y > yMax) yMax = v.y; });
+
+    const G = GD.geom;
+    let walls = [], wallHeight = 260;
+
+    // 1) Flächenbasiert: große vertikale Wandquads (saubere CAD-/Tool-Exporte)
+    const segs = [];
     for (const fc of faces) {
       const vs = fc.map(i => verts[i]).filter(Boolean); if (vs.length < 3) continue;
       const e1 = { x: vs[1].x - vs[0].x, y: vs[1].y - vs[0].y, z: vs[1].z - vs[0].z };
@@ -286,18 +293,78 @@ GD.io = (function () {
       if (best < 25) continue;                                // zu kurz -> Stirnseite der Wand
       segs.push({ a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y }, h: hgt });
     }
-    if (!segs.length) { alert("Keine Wandflächen im OBJ erkannt (nur niedrige/horizontale Geometrie)."); return; }
-    const walls = mergeWallSegments(segs);
-    const heights = segs.map(s => s.h).sort((x, y) => x - y);
-    const wallHeight = Math.round(heights[Math.floor(heights.length / 2)] || 260);
+
+    if (segs.length >= 3) {
+      walls = mergeWallSegments(segs);
+      const heights = segs.map(s => s.h).sort((x, y) => x - y);
+      wallHeight = Math.round(heights[Math.floor(heights.length / 2)] || 260);
+    } else {
+      // 2) Punktwolke (dichtes Scan-Mesh): Wände aus vertikaler Punktdichte ableiten
+      const scan = wallsFromScan(verts, yMin, yMax);
+      walls = scan.walls; wallHeight = scan.wallHeight || Math.round(yMax - yMin) || 260;
+    }
+
+    if (!walls.length) { alert("Keine Wände im OBJ erkannt. Bei 3D-Scans sollten Boden, Wände und Decke erfasst sein."); return; }
     const fl = GD.make.floor("OBJ-Import");
     fl.wallHeight = wallHeight;
     fl.elevation = GD.state.project.floors.reduce((a, b) => Math.max(a, b.elevation + b.wallHeight), 0);
     walls.forEach(w => fl.walls.push(GD.make.wall(w.a, w.b, Math.max(6, Math.round(w.thickness)))));
     GD.state.commitStructure(() => { GD.state.project.floors.push(fl); GD.state.project.activeFloorId = fl.id; });
     GD.view2d.fit(); GD.ui.refreshAll();
-    GD.ui.toast(walls.length + " Wände importiert · Höhe " + (wallHeight / 100).toFixed(2) + " m");
+    GD.ui.toast(walls.length + " Wände importiert · Höhe " + (wallHeight / 100).toFixed(2) + " m · Vorschlag, bitte prüfen");
   }
+
+  /* Scan-Mesh → Wände: Punkte im Wandband auf den Boden projizieren, dominante
+     Wandrichtung bestimmen, gerade drehen und Wände als Dichte-Peaks (1D) ableiten.
+     Robust gegen die vielen Kleinst-Dreiecke eines 3D-Scans; Koordinaten in cm. */
+  function wallsFromScan(verts, yMin, yMax) {
+    const lo = yMin + 40, hi = yMin + 200;            // Wandband 0,4–2,0 m über Boden
+    const P = [];
+    for (const v of verts) if (v.y >= lo && v.y <= hi) P.push([v.x, v.z]);
+    if (P.length < 400) return { walls: [], wallHeight: 0 };
+    const rot = (pts, ang) => { const c = Math.cos(ang), s = Math.sin(ang); return pts.map(p => [p[0] * c - p[1] * s, p[0] * s + p[1] * c]); };
+    const sumSq = (vals) => {
+      let m = Infinity, M = -Infinity; for (const v of vals) { if (v < m) m = v; if (v > M) M = v; }
+      const n = Math.ceil((M - m) / 5) + 1, h = new Float64Array(n);
+      for (const v of vals) h[((v - m) / 5) | 0]++;
+      let s = 0; for (const c of h) s += c * c; return s;
+    };
+    // dominante Orientierung: Drehwinkel mit den „schärfsten" Achsenhistogrammen
+    let bestAng = 0, bestS = -1;
+    for (let d = 0; d < 90; d += 0.5) {
+      const ang = -d * Math.PI / 180, r = rot(P, ang);
+      const s = sumSq(r.map(p => p[0])) + sumSq(r.map(p => p[1]));
+      if (s > bestS) { bestS = s; bestAng = ang; }
+    }
+    const R = rot(P, bestAng);
+    const peaks = (vals) => {
+      let m = Infinity, M = -Infinity; for (const v of vals) { if (v < m) m = v; if (v > M) M = v; }
+      const n = Math.ceil((M - m) / 4) + 1, h = new Float64Array(n);
+      for (const v of vals) h[((v - m) / 4) | 0]++;
+      const thr = Math.max(120, vals.length * 0.012), out = [];
+      for (let i = 1; i < n - 1; i++) {
+        if (h[i] < thr) continue;
+        let mx = true; for (let dd = -4; dd <= 4; dd++) { const j = i + dd; if (j < 0 || j >= n) continue; if (h[j] > h[i]) { mx = false; break; } }
+        if (mx) out.push(m + i * 4);
+      }
+      return out;
+    };
+    const segOf = (peakPos, isX) => {
+      const res = [];
+      for (const pos of peakPos) {
+        let tmin = Infinity, tmax = -Infinity;
+        for (const p of R) { const perp = isX ? p[0] : p[1]; if (Math.abs(perp - pos) > 6) continue; const along = isX ? p[1] : p[0]; if (along < tmin) tmin = along; if (along > tmax) tmax = along; }
+        if (tmax - tmin < 60) continue;
+        res.push(isX ? [[pos, tmin], [pos, tmax]] : [[tmin, pos], [tmax, pos]]);
+      }
+      return res;
+    };
+    const S = [...segOf(peaks(R.map(p => p[0])), true), ...segOf(peaks(R.map(p => p[1])), false)];
+    const flat = rot(S.flatMap(s => s), -bestAng);
+    const walls = S.map((s, i) => ({ a: { x: flat[i * 2][0], y: flat[i * 2][1] }, b: { x: flat[i * 2 + 1][0], y: flat[i * 2 + 1][1] }, thickness: 18 }));
+    return { walls, wallHeight: Math.round(yMax - yMin) };
+  }
+
   // Parallele Wandseiten zu Mittellinie + Dicke zusammenführen
   function mergeWallSegments(segs) {
     const G = GD.geom, used = new Array(segs.length).fill(false), out = [];
