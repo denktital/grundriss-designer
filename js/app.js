@@ -171,7 +171,20 @@ GD.ui = (function () {
       const wh = h("input", { type: "number", step: "1", placeholder: "auto", value: o.height ? o.height : "" });
       wh.addEventListener("change", () => { const v = parseFloat(wh.value); commit(() => o.height = (isFinite(v) && v > 0) ? v : null); });
       box.appendChild(field("Höhe (cm, leer = Geschoss)", wh));
-      box.appendChild(h("p", { class: "ro" }, ["Länge: " + m(GD.geom.dist(o.a, o.b)) + " m"]));
+      box.appendChild(field("Länge (m)", num(m(GD.geom.dist(o.a, o.b)), v => {
+        const newLen = Math.max(1, v * 100);
+        GD.state.commitStructure(() => {
+          const ax = o.a.x, ay = o.a.y, bx = o.b.x, by = o.b.y;
+          const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1;
+          const nbx = ax + dx / len * newLen, nby = ay + dy / len * newLen;
+          fl.walls.forEach(w => {
+            if (Math.hypot(w.a.x - bx, w.a.y - by) < 1.2) { w.a.x = nbx; w.a.y = nby; }
+            if (Math.hypot(w.b.x - bx, w.b.y - by) < 1.2) { w.b.x = nbx; w.b.y = nby; }
+          });
+        });
+        GD.view2d.render(); buildProps();
+      })));
+      box.appendChild(h("p", { class: "hint-sm" }, ["Punkt A bleibt fix, Punkt B (mit anliegenden Wänden) wird angepasst."]));
     } else if (s.kind === "opening") {
       const isWin = GD.isWindow(o.type), odef = GD.openingDefs[o.type] || {};
       box.appendChild(h("h3", {}, [isWin ? "Fenster" : "Tür"]));
